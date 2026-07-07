@@ -6,6 +6,10 @@ in data/gold/:
 
   1. gold/team_stats        - per-team, per-season aggregate stats
   2. gold/player_batting    - per-player, per-season batting stats
+  3. gold/player_bowling    - per-player, per-season bowling stats
+  4. gold/venue_stats       - per-venue, per-season match analysis
+  5. gold/head_to_head      - team vs team historical records
+  6. gold/top_performers    - player of match + impact rankings
 
 Usage:
     python pipeline/silver_to_gold.py
@@ -256,6 +260,240 @@ def build_player_batting(matches, deliveries):
 
 
 # ---------------------------------------------------------------------------
+# GOLD TABLE 3:  player_bowling
+# ---------------------------------------------------------------------------
+def build_player_bowling(matches, deliveries):
+    """
+    Per-player, per-season bowling stats:
+      overs, maidens, runs_conceded, wickets, economy, bowling_avg,
+      best_figures, four_wicket_hauls, five_wicket_hauls, dot_ball_pct
+    """
+    print("[silver->gold] Building player_bowling ...")
+
+    # Legal deliveries for overs count (exclude wides and noballs)
+    legal = deliveries.filter((col("is_wide") == False) & (col("is_noball") == False))
+
+    # Runs conceded by bowler = total_runs - legbyes - byes (those aren't bowler's fault)
+    dl = deliveries.withColumn(
+        "bowler_runs", col("total_runs") - col("legbyes") - col("byes")
+    )
+
+    # Per-match spell
+    spell = dl.groupBy("match_id", "season", "bowler").agg(
+        spark_sum("bowler_runs").alias("runs_conceded"),
+        spark_sum(when(col("is_wicket") & (~col("dismissal_kind").isin(
+            "run out", "retired hurt", "retired out", "obstructing the field"
+        )), 1).otherwise(0)).alias("wickets"),
+        spark_sum(when(col("bowler_runs") == 0, 1).otherwise(0)).alias("dots"),
+    )
+
+    # Legal balls per spell for overs
+    legal_spell = legal.groupBy("match_id", "season", "bowler").agg(
+        count("*").alias("legal_balls"),
+    )
+    spell = spell.join(legal_spell, ["match_id", "season", "bowler"], "left")
+
+    # Season aggregation
+    player_bowling = spell.groupBy("season", "bowler").agg(
+        countDistinct("match_id").alias("matches"),
+        spark_sum("legal_balls").alias("total_balls"),
+        spark_sum("runs_conceded").alias("total_runs_conceded"),
+        spark_sum("wickets").alias("total_wickets"),
+        spark_sum("dots").alias("total_dots"),
+        spark_max("wickets").alias("best_wickets_in_match"),
+        spark_sum(when(col("wickets") >= 4, 1).otherwise(0)).alias("four_wkt_hauls"),
+        spark_sum(when(col("wickets") >= 5, 1).otherwise(0)).alias("five_wkt_hauls"),
+    )
+
+    player_bowling = player_bowling.withColumn(
+        "overs", spark_round(col("total_balls") / 6, 1)
+    ).withColumn(
+        "economy",
+        spark_round(col("total_runs_conceded") / (col("total_balls") / 6), 2)
+    ).withColumn(
+        "bowling_avg",
+        spark_round(
+            when(col("total_wickets") > 0, col("total_runs_conceded") / col("total_wickets"))
+            .otherwise(lit(None)),
+            2
+        )
+    ).withColumn(
+        "bowling_sr",
+        spark_round(
+            when(col("total_wickets") > 0, col("total_balls") / col("total_wickets"))
+            .otherwise(lit(None)),
+            2
+        )
+    ).withColumn(
+        "dot_ball_pct",
+        spark_round(col("total_dots") / col("total_balls") * 100, 1)
+    ).orderBy(col("season"), col("total_wickets").desc())
+
+    row_count = player_bowling.count()
+    print(f"[silver->gold] player_bowling: {row_count} rows.")
+    return player_bowling
+
+
+# ---------------------------------------------------------------------------
+# GOLD TABLE 4:  venue_stats
+# ---------------------------------------------------------------------------
+def build_venue_stats(matches, deliveries):
+    """
+    Per-venue, per-season stats:
+      matches_played, avg_1st_innings_score, avg_2nd_innings_score,
+      bat_first_wins, chase_wins, highest_total, lowest_total
+    """
+    print("[silver->gold] Building venue_stats ...")
+
+    # Innings totals per match
+    innings_totals = deliveries.groupBy("match_id", "season", "innings_number", "batting_team").agg(
+        spark_sum("total_runs").alias("innings_total"),
+        spark_sum(when(col("is_wicket") == True, 1).otherwise(0)).alias("wickets_fell"),
+        spark_sum(when(col("batter_runs") == 6, 1).otherwise(0)).alias("sixes"),
+        spark_sum(when(col("batter_runs") == 4, 1).otherwise(0)).alias("fours"),
+    )
+
+    # Join with matches to get venue
+    innings_with_venue = innings_totals.join(
+        matches.select("match_id", "venue", "winner", "team1", "toss_winner", "toss_decision"),
+        "match_id",
+    )
+
+    # First & second innings
+    first_inn = innings_with_venue.filter(col("innings_number") == 1)
+    second_inn = innings_with_venue.filter(col("innings_number") == 2)
+
+    # Bat-first team = innings 1 batting team
+    bat_first_wins = first_inn.filter(
+        col("batting_team") == col("winner")
+    ).groupBy("season", "venue").agg(count("*").alias("bat_first_wins"))
+
+    chase_wins = second_inn.filter(
+        col("batting_team") == col("winner")
+    ).groupBy("season", "venue").agg(count("*").alias("chase_wins"))
+
+    # Venue aggregation
+    venue_agg = innings_with_venue.groupBy("season", "venue").agg(
+        countDistinct("match_id").alias("matches_played"),
+        spark_round(avg("innings_total"), 1).alias("avg_score"),
+        spark_max("innings_total").alias("highest_total"),
+        spark_min("innings_total").alias("lowest_total"),
+        spark_round(avg("sixes"), 1).alias("avg_sixes_per_innings"),
+        spark_round(avg("fours"), 1).alias("avg_fours_per_innings"),
+    )
+
+    first_inn_avg = first_inn.groupBy("season", "venue").agg(
+        spark_round(avg("innings_total"), 1).alias("avg_1st_inn_score"),
+    )
+    second_inn_avg = second_inn.groupBy("season", "venue").agg(
+        spark_round(avg("innings_total"), 1).alias("avg_2nd_inn_score"),
+    )
+
+    venue_stats = venue_agg \
+        .join(first_inn_avg, ["season", "venue"], "left") \
+        .join(second_inn_avg, ["season", "venue"], "left") \
+        .join(bat_first_wins, ["season", "venue"], "left") \
+        .join(chase_wins, ["season", "venue"], "left") \
+        .na.fill(0, ["bat_first_wins", "chase_wins"]) \
+        .orderBy("season", "venue")
+
+    row_count = venue_stats.count()
+    print(f"[silver->gold] venue_stats: {row_count} rows.")
+    return venue_stats
+
+
+# ---------------------------------------------------------------------------
+# GOLD TABLE 5:  head_to_head
+# ---------------------------------------------------------------------------
+def build_head_to_head(matches):
+    """
+    Team vs team historical record (all-time):
+      team_a, team_b, total_matches, team_a_wins, team_b_wins,
+      no_results, last_played
+    """
+    print("[silver->gold] Building head_to_head ...")
+
+    # Normalise so team_a < team_b alphabetically (avoids duplicates)
+    h2h_base = matches.withColumn(
+        "team_a",
+        when(col("team1") < col("team2"), col("team1")).otherwise(col("team2"))
+    ).withColumn(
+        "team_b",
+        when(col("team1") < col("team2"), col("team2")).otherwise(col("team1"))
+    )
+
+    head_to_head = h2h_base.groupBy("team_a", "team_b").agg(
+        count("*").alias("total_matches"),
+        spark_sum(when(col("winner") == col("team_a"), 1).otherwise(0)).alias("team_a_wins"),
+        spark_sum(when(col("winner") == col("team_b"), 1).otherwise(0)).alias("team_b_wins"),
+        spark_sum(when(col("winner").isNull(), 1).otherwise(0)).alias("no_results"),
+        spark_max("date").alias("last_played"),
+        spark_min("date").alias("first_played"),
+    ).orderBy(col("total_matches").desc())
+
+    row_count = head_to_head.count()
+    print(f"[silver->gold] head_to_head: {row_count} rows.")
+    return head_to_head
+
+
+# ---------------------------------------------------------------------------
+# GOLD TABLE 6:  top_performers
+# ---------------------------------------------------------------------------
+def build_top_performers(matches, deliveries):
+    """
+    Player of Match awards per season + all-time, plus impact score.
+    """
+    print("[silver->gold] Building top_performers ...")
+
+    # POM awards per player per season
+    pom = matches.filter(col("player_of_match").isNotNull()) \
+        .groupBy("season", "player_of_match").agg(
+            count("*").alias("pom_awards"),
+        ).withColumnRenamed("player_of_match", "player")
+
+    # All-time POM
+    pom_alltime = matches.filter(col("player_of_match").isNotNull()) \
+        .groupBy(col("player_of_match").alias("player")).agg(
+            count("*").alias("career_pom_awards"),
+        )
+
+    # Season batting runs for context
+    balls = deliveries.filter(col("is_wide") == False)
+    bat_season = balls.groupBy("season", "batter").agg(
+        spark_sum("batter_runs").alias("season_runs"),
+    ).withColumnRenamed("batter", "player")
+
+    # Season bowling wickets for context
+    bowl_season = deliveries.filter(
+        (col("is_wicket") == True) &
+        (~col("dismissal_kind").isin("run out", "retired hurt", "retired out"))
+    ).groupBy("season", "bowler").agg(
+        count("*").alias("season_wickets"),
+    ).withColumnRenamed("bowler", "player")
+
+    # Merge: POM + batting + bowling
+    top_perf = pom \
+        .join(bat_season, ["season", "player"], "left") \
+        .join(bowl_season, ["season", "player"], "left") \
+        .na.fill(0, ["season_runs", "season_wickets"])
+
+    # Impact score = POM*10 + runs/50 + wickets*2
+    top_perf = top_perf.withColumn(
+        "impact_score",
+        spark_round(
+            col("pom_awards") * 10
+            + col("season_runs") / 50
+            + col("season_wickets") * 2,
+            1
+        )
+    ).orderBy(col("season"), col("impact_score").desc())
+
+    row_count = top_perf.count()
+    print(f"[silver->gold] top_performers: {row_count} rows.")
+    return top_perf
+
+
+# ---------------------------------------------------------------------------
 # Writer
 # ---------------------------------------------------------------------------
 def write_gold(df, path):
@@ -272,8 +510,7 @@ def process_silver_to_gold():
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     silver_matches = os.path.join(project_root, "data", "silver", "matches")
     silver_deliveries = os.path.join(project_root, "data", "silver", "deliveries")
-    gold_team_stats = os.path.join(project_root, "data", "gold", "team_stats")
-    gold_player_batting = os.path.join(project_root, "data", "gold", "player_batting")
+    gold_dir = os.path.join(project_root, "data", "gold")
 
     spark = create_spark_session()
 
@@ -284,41 +521,64 @@ def process_silver_to_gold():
         print(f"[silver->gold] Silver: {matches.count()} matches, {deliveries.count()} deliveries")
 
         # -- Gold Table 1: Team Stats ----------------------------------------
-        team_stats = build_team_stats(matches, deliveries)
-        write_gold(team_stats, gold_team_stats)
+        ts = build_team_stats(matches, deliveries)
+        write_gold(ts, os.path.join(gold_dir, "team_stats"))
 
         # -- Gold Table 2: Player Batting ------------------------------------
-        player_batting = build_player_batting(matches, deliveries)
-        write_gold(player_batting, gold_player_batting)
+        pb = build_player_batting(matches, deliveries)
+        write_gold(pb, os.path.join(gold_dir, "player_batting"))
+
+        # -- Gold Table 3: Player Bowling ------------------------------------
+        pw = build_player_bowling(matches, deliveries)
+        write_gold(pw, os.path.join(gold_dir, "player_bowling"))
+
+        # -- Gold Table 4: Venue Stats ---------------------------------------
+        vs = build_venue_stats(matches, deliveries)
+        write_gold(vs, os.path.join(gold_dir, "venue_stats"))
+
+        # -- Gold Table 5: Head to Head --------------------------------------
+        h2h = build_head_to_head(matches)
+        write_gold(h2h, os.path.join(gold_dir, "head_to_head"))
+
+        # -- Gold Table 6: Top Performers ------------------------------------
+        tp = build_top_performers(matches, deliveries)
+        write_gold(tp, os.path.join(gold_dir, "top_performers"))
 
         # -- Sanity check ----------------------------------------------------
         print("\n========== SANITY CHECK ==========")
-        print("\n--- TEAM STATS SAMPLE (2026 season) ---")
-        spark.read.parquet(gold_team_stats) \
+
+        print("\n--- TOP BOWLERS 2026 ---")
+        spark.read.parquet(os.path.join(gold_dir, "player_bowling")) \
             .filter(col("season") == 2026) \
-            .orderBy(col("wins").desc()) \
+            .orderBy(col("total_wickets").desc()) \
+            .select("bowler","matches","overs","total_wickets","economy","bowling_avg","bowling_sr","dot_ball_pct") \
             .show(10, truncate=False)
 
-        print("\n--- TOP 10 BATTERS 2026 ---")
-        spark.read.parquet(gold_player_batting) \
+        print("\n--- TOP VENUES 2026 ---")
+        spark.read.parquet(os.path.join(gold_dir, "venue_stats")) \
             .filter(col("season") == 2026) \
-            .orderBy(col("total_runs").desc()) \
+            .orderBy(col("matches_played").desc()) \
+            .select("venue","matches_played","avg_1st_inn_score","avg_2nd_inn_score","bat_first_wins","chase_wins","highest_total") \
             .show(10, truncate=False)
 
-        print("\n--- ALL-TIME RUN LEADERS (aggregate across seasons) ---")
-        spark.read.parquet(gold_player_batting) \
-            .groupBy("batter") \
-            .agg(
-                spark_sum("total_runs").alias("career_runs"),
-                spark_sum("matches").alias("career_matches"),
-                spark_max("highest_score").alias("best_score"),
-            ) \
-            .orderBy(col("career_runs").desc()) \
+        print("\n--- TOP HEAD-TO-HEAD RIVALRIES ---")
+        spark.read.parquet(os.path.join(gold_dir, "head_to_head")) \
+            .orderBy(col("total_matches").desc()) \
             .show(10, truncate=False)
 
-        ts_count = spark.read.parquet(gold_team_stats).count()
-        pb_count = spark.read.parquet(gold_player_batting).count()
-        print(f"\nGold layer ready -- {ts_count} team_stats rows, {pb_count} player_batting rows")
+        print("\n--- TOP PERFORMERS 2026 ---")
+        spark.read.parquet(os.path.join(gold_dir, "top_performers")) \
+            .filter(col("season") == 2026) \
+            .orderBy(col("impact_score").desc()) \
+            .show(10, truncate=False)
+
+        # Summary counts
+        counts = {}
+        for t in ["team_stats","player_batting","player_bowling","venue_stats","head_to_head","top_performers"]:
+            counts[t] = spark.read.parquet(os.path.join(gold_dir, t)).count()
+        print("\n========== GOLD LAYER SUMMARY ==========")
+        for k, v in counts.items():
+            print(f"  {k}: {v} rows")
 
     finally:
         spark.stop()
