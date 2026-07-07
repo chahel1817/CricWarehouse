@@ -1,0 +1,9 @@
+data/bronze/
+data/silver/
+data/gold/
+__pycache__/
+.venv/
+*.pyc
+.env
+node_modules/
+.next/
