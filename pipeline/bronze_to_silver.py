@@ -84,9 +84,12 @@ def build_matches(df):
     matches_df = df.select(
         col("match_id"),
         # --- season normalised to integer year --------------------------------
-        regexp_extract(
-            col("info.season").cast("string"), r"(\d{4})", 1
-        ).cast("int").alias("season"),
+        when(col("info.season").cast("string") == "2007/08", 2008)
+        .when(col("info.season").cast("string") == "2009/10", 2010)
+        .when(col("info.season").cast("string") == "2020/21", 2020)
+        .otherwise(
+            regexp_extract(col("info.season").cast("string"), r"(\d{4})", 1).cast("int")
+        ).alias("season"),
         col("info.city").alias("city"),
         col("info.dates").getItem(0).cast("date").alias("date"),
         col("info.event.name").alias("event_name"),
@@ -121,9 +124,12 @@ def build_deliveries(df):
     # --- Step 1: explode innings with position (gives innings_number) --------
     innings_df = df.select(
         col("match_id"),
-        regexp_extract(
-            col("info.season").cast("string"), r"(\d{4})", 1
-        ).cast("int").alias("season"),
+        when(col("info.season").cast("string") == "2007/08", 2008)
+        .when(col("info.season").cast("string") == "2009/10", 2010)
+        .when(col("info.season").cast("string") == "2020/21", 2020)
+        .otherwise(
+            regexp_extract(col("info.season").cast("string"), r"(\d{4})", 1).cast("int")
+        ).alias("season"),
         posexplode(col("innings")).alias("innings_idx", "inning"),
     )
     # innings_idx is 0-based; convert to 1-based innings number
