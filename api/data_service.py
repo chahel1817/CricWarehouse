@@ -8,7 +8,12 @@ Caches dataframes in memory for fast response times.
 
 import os
 import pandas as pd
+from pandas.api.types import is_scalar
 from typing import Optional, List, Dict, Any
+
+PLAYER_ALIASES = {
+    "viratkohli": "V Kohli",
+}
 
 def normalize_query_team(team_name: Optional[str]) -> Optional[str]:
     """
@@ -42,11 +47,36 @@ def normalize_query_player(player_name: Optional[str]) -> Optional[str]:
     if not player_name:
         return player_name
 
-    aliases = {
-        "viratkohli": "V Kohli",
-    }
     compact = normalize_lookup_text(player_name)
-    return aliases.get(compact, player_name.strip())
+    return PLAYER_ALIASES.get(compact, player_name.strip())
+
+def clean_value(value: Any) -> Any:
+    """Converts pandas/numpy scalar values into JSON-safe Python values."""
+    if value is None:
+        return None
+    if is_scalar(value) and pd.isna(value):
+        return None
+    if hasattr(value, "item"):
+        value = value.item()
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return value
+
+def clean_records(df: pd.DataFrame) -> List[Dict[str, Any]]:
+    """Converts a dataframe to JSON-safe records."""
+    return [
+        {key: clean_value(value) for key, value in record.items()}
+        for record in df.to_dict(orient="records")
+    ]
+
+def validate_sort_column(sort_by: str, valid_cols: List[str], default_col: str) -> str:
+    """Returns a valid sort column or raises a client-facing validation error."""
+    if not sort_by:
+        return default_col
+    if sort_by not in valid_cols:
+        valid = ", ".join(valid_cols)
+        raise ValueError(f"Invalid sort_by '{sort_by}'. Valid values are: {valid}")
+    return sort_by
 
 class DataService:
     def __init__(self):
@@ -68,6 +98,47 @@ class DataService:
                 raise FileNotFoundError(f"Parquet path not found: {path}")
             self._cache[cache_key] = pd.read_parquet(path)
         return self._cache[cache_key]
+
+    def get_dataset_status(self) -> Dict[str, Any]:
+        """Returns load status and row counts for all backend datasets."""
+        datasets = {
+            "silver_matches": ("silver", "matches"),
+            "gold_team_stats": ("gold", "team_stats"),
+            "gold_player_batting": ("gold", "player_batting"),
+            "gold_player_bowling": ("gold", "player_bowling"),
+            "gold_venue_stats": ("gold", "venue_stats"),
+            "gold_head_to_head": ("gold", "head_to_head"),
+            "gold_top_performers": ("gold", "top_performers"),
+        }
+        details = {}
+        all_ok = True
+
+        for name, (layer, table) in datasets.items():
+            try:
+                df = self._get_df(layer, table)
+                details[name] = {
+                    "status": "ok",
+                    "rows": int(len(df)),
+                    "columns": list(df.columns),
+                }
+            except Exception as exc:
+                all_ok = False
+                details[name] = {
+                    "status": "error",
+                    "error": str(exc),
+                }
+
+        return {"status": "ok" if all_ok else "error", "datasets": details}
+
+    def get_metadata(self) -> Dict[str, Any]:
+        """Returns lightweight filter metadata for frontend dropdowns."""
+        return {
+            "seasons": self.get_all_seasons(),
+            "teams": self.get_all_teams(),
+            "venues": self.get_all_venues(),
+            "batting_sort_fields": list(self.get_player_batting().columns),
+            "bowling_sort_fields": list(self.get_player_bowling().columns),
+        }
 
     # ---------- Data loaders --------------------
     
@@ -111,7 +182,7 @@ class DataService:
         filtered = df[df["team"].str.lower() == team_name.lower()].copy()
         filtered = filtered.sort_values("season", ascending=True)
         # Convert NaN values to None so they serialize to null in JSON
-        return filtered.where(pd.notnull(filtered), None).to_dict(orient="records")
+        return clean_records(filtered)
 
     def get_team_head_to_head(self, team_name: str) -> List[Dict[str, Any]]:
         """Gets all-time head-to-head stats for matchups involving the team."""
@@ -151,6 +222,29 @@ class DataService:
 
     # ---------- Player queries --------------------
 
+    def get_all_players(self, search: Optional[str] = None, limit: int = 100) -> List[str]:
+        """Returns player names known to the batting, bowling, and POM tables."""
+        names = set()
+        for df, column in [
+            (self.get_player_batting(), "batter"),
+            (self.get_player_bowling(), "bowler"),
+            (self.get_top_performers(), "player"),
+        ]:
+            names.update(str(name) for name in df[column].dropna().unique().tolist())
+
+        sorted_names = sorted(names)
+        if search:
+            search_key = normalize_lookup_text(search)
+            sorted_names = [
+                name for name in sorted_names
+                if search_key in normalize_lookup_text(name)
+                or any(
+                    search_key in alias_key and canonical == name
+                    for alias_key, canonical in PLAYER_ALIASES.items()
+                )
+            ]
+        return sorted_names[:limit]
+
     def query_batting(self, season: Optional[int] = None, sort_by: str = "total_runs", ascending: bool = False, limit: int = 50) -> List[Dict[str, Any]]:
         """Query player batting stats with filtering and sorting."""
         df = self.get_player_batting()
@@ -179,14 +273,11 @@ class DataService:
             filtered["batting_avg"] = (filtered["total_runs"] / filtered["dismissals"].replace(0, 1)).round(2)
             filtered["season"] = "All-Time"
             
-        # Validate sort_by
-        valid_cols = list(filtered.columns)
-        if sort_by not in valid_cols:
-            sort_by = "total_runs"
+        sort_by = validate_sort_column(sort_by, list(filtered.columns), "total_runs")
             
         filtered = filtered.sort_values(sort_by, ascending=ascending)
         top_n = filtered.head(limit)
-        return top_n.where(pd.notnull(top_n), None).to_dict(orient="records")
+        return clean_records(top_n)
 
     def query_bowling(self, season: Optional[int] = None, sort_by: str = "total_wickets", ascending: bool = False, limit: int = 50) -> List[Dict[str, Any]]:
         """Query player bowling stats with filtering and sorting."""
@@ -215,13 +306,11 @@ class DataService:
             filtered["dot_ball_pct"] = (filtered["total_dots"] / filtered["total_balls"].replace(0, 1) * 100).round(1)
             filtered["season"] = "All-Time"
             
-        valid_cols = list(filtered.columns)
-        if sort_by not in valid_cols:
-            sort_by = "total_wickets"
+        sort_by = validate_sort_column(sort_by, list(filtered.columns), "total_wickets")
             
         filtered = filtered.sort_values(sort_by, ascending=ascending)
         top_n = filtered.head(limit)
-        return top_n.where(pd.notnull(top_n), None).to_dict(orient="records")
+        return clean_records(top_n)
 
     def get_player_history(self, player_name: str) -> Dict[str, Any]:
         """Gets career seasonal breakdown (batting & bowling) and career totals."""
@@ -298,8 +387,8 @@ class DataService:
             "batting_summary": bat_summary,
             "bowling_summary": bowl_summary,
             "pom_summary": pom_summary,
-            "batting_history": p_bat.where(pd.notnull(p_bat), None).to_dict(orient="records"),
-            "bowling_history": p_bowl.where(pd.notnull(p_bowl), None).to_dict(orient="records")
+            "batting_history": clean_records(p_bat),
+            "bowling_history": clean_records(p_bowl)
         }
 
     def query_top_performers(self, season: Optional[int] = None, limit: int = 50) -> List[Dict[str, Any]]:
@@ -321,7 +410,7 @@ class DataService:
             
         filtered = filtered.sort_values("impact_score", ascending=False)
         top_n = filtered.head(limit)
-        return top_n.where(pd.notnull(top_n), None).to_dict(orient="records")
+        return clean_records(top_n)
 
     # ---------- Venue queries --------------------
 
@@ -357,7 +446,7 @@ class DataService:
             filtered["season"] = "All-Time"
             
         filtered = filtered.sort_values("matches_played", ascending=False)
-        return filtered.where(pd.notnull(filtered), None).to_dict(orient="records")
+        return clean_records(filtered)
 
     # ---------- Match queries --------------------
 
@@ -387,7 +476,7 @@ class DataService:
             "total_count": total_count,
             "limit": limit,
             "offset": offset,
-            "matches": page_df.where(pd.notnull(page_df), None).to_dict(orient="records")
+            "matches": clean_records(page_df)
         }
 
     def get_match_by_id(self, match_id: int) -> Optional[Dict[str, Any]]:
@@ -397,10 +486,7 @@ class DataService:
         if match_row.empty:
             return None
         record = match_row.iloc[0].to_dict()
-        # Convert date to string for serialization
-        if pd.notnull(record.get("date")):
-            record["date"] = str(record["date"])
-        return {k: (None if pd.isnull(v) else v) for k, v in record.items()}
+        return {key: clean_value(value) for key, value in record.items()}
 
 # Global singleton instance
 data_service = DataService()

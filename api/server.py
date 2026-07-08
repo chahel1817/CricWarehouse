@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 from api.routers import teams, players, venues, matches
+from api.data_service import data_service
 
 app = FastAPI(
     title="IPL Analytics Platform API",
@@ -45,6 +46,16 @@ def read_root():
             "/matches"
         ]
     }
+
+@app.get("/health", tags=["System"])
+def health_check():
+    """Return backend dataset health for deployment and frontend readiness checks."""
+    return data_service.get_dataset_status()
+
+@app.get("/metadata", tags=["System"])
+def get_metadata():
+    """Return filter metadata used by frontend dropdowns and controls."""
+    return data_service.get_metadata()
 
 if __name__ == "__main__":
     uvicorn.run("api.server:app", host="0.0.0.0", port=8000, reload=True)

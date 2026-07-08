@@ -14,6 +14,17 @@ router = APIRouter(
     tags=["Players"]
 )
 
+@router.get("", response_model=List[str])
+def list_players(
+    search: Optional[str] = Query(None, description="Optional case-insensitive player search text."),
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of player names to return.")
+):
+    """Get player names for frontend search/autocomplete."""
+    try:
+        return data_service.get_all_players(search=search, limit=limit)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load players: {str(e)}")
+
 @router.get("/batting", response_model=List[Dict[str, Any]])
 def get_batting_leaderboard(
     season: Optional[int] = Query(None, description="Filter stats by a specific IPL season. If omitted, aggregates all-time career stats."),
@@ -24,6 +35,8 @@ def get_batting_leaderboard(
     """Retrieve batting leaderboard statistics with custom sorting and filters."""
     try:
         return data_service.query_batting(season=season, sort_by=sort_by, ascending=ascending, limit=limit)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load batting stats: {str(e)}")
 
@@ -37,6 +50,8 @@ def get_bowling_leaderboard(
     """Retrieve bowling leaderboard statistics with custom sorting and filters."""
     try:
         return data_service.query_bowling(season=season, sort_by=sort_by, ascending=ascending, limit=limit)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load bowling stats: {str(e)}")
 

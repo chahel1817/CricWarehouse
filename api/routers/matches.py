@@ -33,7 +33,10 @@ def get_match(match_id: int):
     try:
         match_info = data_service.get_match_by_id(match_id)
         if not match_info:
-            raise HTTPException(status_code=404, detail=f"Match with ID {match_id} not found.")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Match with ID {match_id} not found. Use /matches?limit=10 to discover valid match_id values."
+            )
         return match_info
     except HTTPException:
         raise
