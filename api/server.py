@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-from api.routers import teams
+from api.routers import teams, players, venues, matches
 
 app = FastAPI(
     title="IPL Analytics Platform API",
@@ -27,6 +27,9 @@ app.add_middleware(
 
 # Register routers
 app.include_router(teams.router)
+app.include_router(players.router)
+app.include_router(venues.router)
+app.include_router(matches.router)
 
 @app.get("/")
 def read_root():
@@ -35,10 +38,11 @@ def read_root():
         "message": "IPL Analytics API is ready to serve data.",
         "endpoints": [
             "/teams",
-            "/teams/seasons",
-            "/teams/{team_name}/history",
-            "/teams/{team_name}/head-to-head",
-            "/teams/{team_name}/summary"
+            "/players/batting",
+            "/players/bowling",
+            "/players/top-performers",
+            "/venues/stats",
+            "/matches"
         ]
     }
 

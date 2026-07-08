@@ -47,9 +47,7 @@ def get_team_history(team_name: str):
 def get_team_head_to_head(team_name: str):
     """Get all-time head-to-head records against all opponents for a specific team."""
     try:
-        # First verify team exists by checking all teams list
-        teams = [t.lower() for t in data_service.get_all_teams()]
-        if team_name.lower() not in teams:
+        if not data_service.team_exists(team_name):
             raise HTTPException(status_code=404, detail=f"Team '{team_name}' not found.")
             
         return data_service.get_team_head_to_head(team_name)

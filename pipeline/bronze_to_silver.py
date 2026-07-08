@@ -69,6 +69,19 @@ def read_bronze(spark, bronze_path):
     return df
 
 
+def normalize_team(col_ref):
+    """
+    Normalise team name variations to their latest/current spelling/branding
+    to avoid fragmented stats (e.g. RCB, PBKS, DC rebranding).
+    """
+    return (
+        when(col_ref == "Royal Challengers Bangalore", "Royal Challengers Bengaluru")
+        .when(col_ref == "Kings XI Punjab", "Punjab Kings")
+        .when(col_ref == "Delhi Daredevils", "Delhi Capitals")
+        .otherwise(col_ref)
+    )
+
+
 def build_matches(df):
     """
     Flatten match-level info into a single row per match.
@@ -97,11 +110,11 @@ def build_matches(df):
         col("info.event.stage").alias("stage"),
         col("info.match_type").alias("match_type"),
         col("info.venue").alias("venue"),
-        col("info.teams").getItem(0).alias("team1"),
-        col("info.teams").getItem(1).alias("team2"),
-        col("info.toss.winner").alias("toss_winner"),
+        normalize_team(col("info.teams").getItem(0)).alias("team1"),
+        normalize_team(col("info.teams").getItem(1)).alias("team2"),
+        normalize_team(col("info.toss.winner")).alias("toss_winner"),
         col("info.toss.decision").alias("toss_decision"),
-        col("info.outcome.winner").alias("winner"),
+        normalize_team(col("info.outcome.winner")).alias("winner"),
         col("info.outcome.by.runs").cast("int").alias("win_by_runs"),
         col("info.outcome.by.wickets").cast("int").alias("win_by_wickets"),
         col("info.outcome.result").alias("result"),          # "no result" / "tie" etc.
@@ -140,7 +153,7 @@ def build_deliveries(df):
         col("match_id"),
         col("season"),
         col("innings_number"),
-        col("inning.team").alias("batting_team"),
+        normalize_team(col("inning.team")).alias("batting_team"),
         explode(col("inning.overs")).alias("over"),
     )
 
