@@ -31,6 +31,23 @@ def normalize_query_team(team_name: Optional[str]) -> Optional[str]:
     }
     return aliases.get(team_name.lower().strip(), team_name.strip())
 
+def normalize_lookup_text(value: Optional[str]) -> str:
+    """Normalizes names for forgiving URL lookups."""
+    if not value:
+        return ""
+    return "".join(str(value).lower().split())
+
+def normalize_query_player(player_name: Optional[str]) -> Optional[str]:
+    """Maps common full-name inputs to the Cricsheet player names in the data."""
+    if not player_name:
+        return player_name
+
+    aliases = {
+        "viratkohli": "V Kohli",
+    }
+    compact = normalize_lookup_text(player_name)
+    return aliases.get(compact, player_name.strip())
+
 class DataService:
     def __init__(self):
         # Resolve paths relative to project root
@@ -211,10 +228,13 @@ class DataService:
         bat_df = self.get_player_batting()
         bowl_df = self.get_player_bowling()
         pom_df = self.get_top_performers()
+
+        player_name = normalize_query_player(player_name) or player_name
+        lookup_name = normalize_lookup_text(player_name)
         
-        p_bat = bat_df[bat_df["batter"].str.lower() == player_name.lower()].copy().sort_values("season")
-        p_bowl = bowl_df[bowl_df["bowler"].str.lower() == player_name.lower()].copy().sort_values("season")
-        p_pom = pom_df[pom_df["player"].str.lower() == player_name.lower()].copy().sort_values("season")
+        p_bat = bat_df[bat_df["batter"].apply(normalize_lookup_text) == lookup_name].copy().sort_values("season")
+        p_bowl = bowl_df[bowl_df["bowler"].apply(normalize_lookup_text) == lookup_name].copy().sort_values("season")
+        p_pom = pom_df[pom_df["player"].apply(normalize_lookup_text) == lookup_name].copy().sort_values("season")
         
         # Real player name (proper capitalization)
         real_name = player_name
