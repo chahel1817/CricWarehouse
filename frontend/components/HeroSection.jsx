@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Play, FileCode, Layers, Sparkles, Database, AreaChart } from 'lucide-react';
+import Link from 'next/link';
 
 
 /* ─────────────────────────────────────────────────────────
@@ -278,12 +279,12 @@ export default function HeroSection() {
                 Explore Pipeline
                 <Play className="h-4 w-4" />
               </a>
-              <a
-                href="#players"
+              <Link
+                href="/players"
                 className="inline-flex items-center gap-2 border border-ink/15 px-5 py-3.5 text-[10px] font-black uppercase tracking-[0.18em] text-ink/60 transition hover:border-ink hover:text-ink"
               >
                 Player Analytics
-              </a>
+              </Link>
             </div>
           </div>
         </div>
