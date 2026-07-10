@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Play } from 'lucide-react';
+import { Play, FileCode, Layers, Sparkles, Database, AreaChart } from 'lucide-react';
 
 
 /* ─────────────────────────────────────────────────────────
@@ -25,8 +25,8 @@ function Label({ children, className = "" }) {
 function MedallionSVG() {
   return (
     <svg
-      viewBox="0 0 500 430"
-      className="w-full h-auto max-w-[480px] lg:max-w-full drop-shadow-sm select-none"
+      viewBox="0 0 540 430"
+      className="w-full h-auto max-w-[540px] lg:max-w-full drop-shadow-sm select-none overflow-visible"
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
@@ -72,70 +72,88 @@ function MedallionSVG() {
       <path d="M 299,311 L 296,320 L 305,317" fill="none" stroke="rgba(23,23,23,0.3)" strokeWidth="2" />
 
       {/* Animated Flowing Dots */}
-      <circle r="4" fill="rgba(255,90,47,0.7)">
+      <circle r="4.5" fill="rgba(255,90,47,0.75)">
         <animateMotion dur="3s" repeatCount="indefinite" path="M 226 79 L 104 176" />
       </circle>
-      <circle r="4.5" fill="#3d63ff">
+      <circle r="5" fill="#3d63ff">
         <animateMotion dur="2.5s" repeatCount="indefinite" path="M 115 200 L 215 200" />
       </circle>
-      <circle r="4.5" fill="#f7c948">
+      <circle r="5" fill="#f7c948">
         <animateMotion dur="2.5s" repeatCount="indefinite" path="M 285 200 L 385 200" />
       </circle>
-      <circle r="4" fill="#22b86a">
+      <circle r="4.5" fill="#22b86a">
         <animateMotion dur="3s" repeatCount="indefinite" path="M 396 224 L 296 320" />
       </circle>
 
       {/* ── STAGE 0: RAW DATA ── */}
-      <g transform="translate(250, 55)">
+      <g transform="translate(250, 55)" className="cursor-help">
+        <title>RAW DATA: 1,243 raw match files containing nested ball-by-ball JSON structure</title>
         <circle cx="0" cy="0" r="34" fill="#f7f5ef" stroke="rgba(23,23,23,0.15)" strokeWidth="2" />
         <circle cx="0" cy="0" r="28" fill="rgba(23,23,23,0.04)" />
-        <text x="0" y="-4" textAnchor="middle" fill="#171717" fontSize="10" fontWeight="900" letterSpacing="0.1em">RAW</text>
-        <text x="0" y="8" textAnchor="middle" fill="#171717" fontSize="8" fontWeight="800" opacity="0.65">JSON / CSV</text>
-        <text x="0" y="48" textAnchor="middle" fill="rgba(23,23,23,0.4)" fontSize="8" fontWeight="700" letterSpacing="0.05em">250K+ MATCH EVENTS</text>
+        <g transform="translate(-10, -15)">
+          <FileCode width={20} height={20} className="text-ink/80" strokeWidth={2} />
+        </g>
+        <text x="0" y="16" textAnchor="middle" fill="#171717" fontSize="9.5" fontWeight="950" letterSpacing="0.05em">RAW DATA</text>
+        <text x="0" y="48" textAnchor="middle" fill="rgba(23,23,23,0.5)" fontSize="9.5" fontWeight="900" letterSpacing="0.05em">250K+ MATCH EVENTS</text>
       </g>
 
       {/* ── STAGE 1: BRONZE ── */}
-      <g transform="translate(80, 200)">
+      <g transform="translate(80, 200)" className="cursor-help">
+        <title>BRONZE LAYER: Raw ingestion layer. Appends metadata and preserves immutable raw state as Parquet format.</title>
         <circle cx="0" cy="0" r="35" fill="#f7f5ef" stroke="url(#bronzeGrad)" strokeWidth="3" />
         <circle cx="0" cy="0" r="27" fill="none" stroke="rgba(205,127,50,0.15)" strokeWidth="5" />
-        <text x="0" y="5" textAnchor="middle" fill="#cd7f32" fontSize="16" fontWeight="900">B</text>
-        <text x="0" y="50" textAnchor="middle" fill="#171717" fontSize="10" fontWeight="900" letterSpacing="0.05em">BRONZE</text>
-        <text x="0" y="62" textAnchor="middle" fill="rgba(23,23,23,0.4)" fontSize="8" fontWeight="700">RAW INGESTION</text>
+        <g transform="translate(-10, -17)">
+          <Layers width={20} height={20} className="text-boundary" strokeWidth={2.2} />
+        </g>
+        <text x="0" y="16" textAnchor="middle" fill="#cd7f32" fontSize="9" fontWeight="950" letterSpacing="0.05em">BRONZE</text>
+        <text x="0" y="52" textAnchor="middle" fill="#171717" fontSize="10.5" fontWeight="950" letterSpacing="0.05em">BRONZE LAYER</text>
+        <text x="0" y="64" textAnchor="middle" fill="rgba(23,23,23,0.5)" fontSize="9" fontWeight="900">RAW INGESTION</text>
         {/* Technical annotation */}
-        <text x="-35" y="-45" fill="rgba(23,23,23,0.35)" fontSize="7.5" fontWeight="900" letterSpacing="0.1em">SYS: INGEST</text>
+        <text x="-35" y="-45" fill="rgba(23,23,23,0.4)" fontSize="9" fontWeight="900" letterSpacing="0.1em">SYS: INGEST</text>
         <line x1="-35" y1="-38" x2="-10" y2="-20" stroke="rgba(23,23,23,0.15)" strokeWidth="1" />
       </g>
 
       {/* ── STAGE 2: SILVER ── */}
-      <g transform="translate(250, 200)">
+      <g transform="translate(250, 200)" className="cursor-help">
+        <title>SILVER LAYER: Cleaned, conformed, deduplicated, and schema-enforced records ready for analytic queries.</title>
         <circle cx="0" cy="0" r="35" fill="#f7f5ef" stroke="url(#silverGrad)" strokeWidth="3" />
         <circle cx="0" cy="0" r="27" fill="none" stroke="rgba(158,163,170,0.15)" strokeWidth="5" />
-        <text x="0" y="5" textAnchor="middle" fill="#9ea3aa" fontSize="16" fontWeight="900">S</text>
-        <text x="0" y="50" textAnchor="middle" fill="#171717" fontSize="10" fontWeight="900" letterSpacing="0.05em">SILVER</text>
-        <text x="0" y="62" textAnchor="middle" fill="rgba(23,23,23,0.4)" fontSize="8" fontWeight="700">TRANSFORMED</text>
+        <g transform="translate(-10, -17)">
+          <Sparkles width={20} height={20} className="text-royal" strokeWidth={2.2} />
+        </g>
+        <text x="0" y="16" textAnchor="middle" fill="#9ea3aa" fontSize="9" fontWeight="950" letterSpacing="0.05em">SILVER</text>
+        <text x="0" y="52" textAnchor="middle" fill="#171717" fontSize="10.5" fontWeight="950" letterSpacing="0.05em">SILVER LAYER</text>
+        <text x="0" y="64" textAnchor="middle" fill="rgba(23,23,23,0.5)" fontSize="9.5" fontWeight="900">TRANSFORMED</text>
         {/* Spark engine badge */}
         <rect x="-35" y="-55" width="70" height="14" rx="4" fill="rgba(61,99,255,0.08)" stroke="rgba(61,99,255,0.2)" strokeWidth="1" />
-        <text x="0" y="-46" textAnchor="middle" fill="#3d63ff" fontSize="7" fontWeight="900" letterSpacing="0.1em">PYSPARK ENGINE</text>
+        <text x="0" y="-46" textAnchor="middle" fill="#3d63ff" fontSize="8.5" fontWeight="950" letterSpacing="0.1em">PYSPARK ENGINE</text>
       </g>
 
       {/* ── STAGE 3: GOLD ── */}
-      <g transform="translate(420, 200)">
+      <g transform="translate(420, 200)" className="cursor-help">
+        <title>GOLD LAYER: Richly aggregated business-level tables optimized for rapid reporting and FastAPI analytics endpoints.</title>
         <circle cx="0" cy="0" r="35" fill="#f7f5ef" stroke="url(#goldGrad)" strokeWidth="3" />
         <circle cx="0" cy="0" r="27" fill="none" stroke="rgba(212,175,55,0.15)" strokeWidth="5" />
-        <text x="0" y="5" textAnchor="middle" fill="#d4af37" fontSize="16" fontWeight="900">G</text>
-        <text x="0" y="50" textAnchor="middle" fill="#171717" fontSize="10" fontWeight="900" letterSpacing="0.05em">GOLD</text>
-        <text x="0" y="62" textAnchor="middle" fill="rgba(23,23,23,0.4)" fontSize="8" fontWeight="700">ANALYTICS READY</text>
+        <g transform="translate(-10, -17)">
+          <Database width={20} height={20} className="text-trophy" strokeWidth={2.2} />
+        </g>
+        <text x="0" y="16" textAnchor="middle" fill="#d4af37" fontSize="9" fontWeight="950" letterSpacing="0.05em">GOLD</text>
+        <text x="0" y="52" textAnchor="middle" fill="#171717" fontSize="10.5" fontWeight="950" letterSpacing="0.05em">GOLD LAYER</text>
+        <text x="0" y="64" textAnchor="middle" fill="rgba(23,23,23,0.5)" fontSize="9.5" fontWeight="900">ANALYTICS READY</text>
         {/* Technical annotation */}
-        <text x="35" y="-45" fill="rgba(23,23,23,0.35)" fontSize="7.5" fontWeight="900" letterSpacing="0.1em">DB: PARQUET</text>
+        <text x="35" y="-45" fill="rgba(23,23,23,0.4)" fontSize="9" fontWeight="900" letterSpacing="0.1em">DB: PARQUET</text>
         <line x1="35" y1="-38" x2="10" y2="-20" stroke="rgba(23,23,23,0.15)" strokeWidth="1" />
       </g>
 
       {/* ── STAGE 4: INSIGHTS ── */}
-      <g transform="translate(250, 340)">
+      <g transform="translate(250, 340)" className="cursor-help">
+        <title>API & SERVING: FastAPI endpoints consuming optimized Gold parquet data to feed Next.js web application views.</title>
         <rect x="-65" y="-20" width="130" height="40" rx="20" fill="#f7f5ef" stroke="#22b86a" strokeWidth="2.5" />
-        <circle cx="-42" cy="0" r="5" fill="#22b86a" />
-        <text x="12" y="4" textAnchor="middle" fill="#22b86a" fontSize="11" fontWeight="900" letterSpacing="0.1em">INSIGHTS ↗</text>
-        <text x="0" y="34" textAnchor="middle" fill="rgba(23,23,23,0.4)" fontSize="7" fontWeight="800" letterSpacing="0.05em">KPI DASHBOARD SERVING</text>
+        <g transform="translate(-48, -10)">
+          <AreaChart width={20} height={20} className="text-[#22b86a]" strokeWidth={2.2} />
+        </g>
+        <text x="14" y="5" textAnchor="middle" fill="#22b86a" fontSize="12" fontWeight="950" letterSpacing="0.1em">INSIGHTS ↗</text>
+        <text x="0" y="34" textAnchor="middle" fill="rgba(23,23,23,0.5)" fontSize="8.5" fontWeight="900" letterSpacing="0.05em">KPI DASHBOARD SERVING</text>
       </g>
     </svg>
   );
@@ -191,7 +209,7 @@ export default function HeroSection() {
         {/* ── LEFT COLUMN: Headline & Compositional Flow ── */}
         <div
           className="relative flex flex-col justify-center"
-          style={{ width: "52%", paddingTop: "3rem", paddingBottom: "3rem" }}
+          style={{ width: "46%", paddingTop: "3rem", paddingBottom: "3rem" }}
         >
           {/* Visual line connector from top margin */}
           <div className="absolute top-0 left-0 w-px h-16 bg-ink/10" aria-hidden="true" />
@@ -199,55 +217,60 @@ export default function HeroSection() {
           {/* Super-label */}
           <div className="reveal flex items-center gap-3 pl-4">
             <span className="h-px w-8 bg-ink/25" aria-hidden="true" />
-            <Label>IPL DATA PIPELINE · PIPELINE VISUALIZER</Label>
+            <Label>IPL DATA PIPELINE · 1,243 MATCHES · 2008–2026</Label>
           </div>
 
-          {/* ── MAIN HEADLINE ── */}
+          {/* ── MAIN HEADLINE (Two Lines Max) ── */}
           <h1
-            className="reveal reveal-d1 mt-6 font-display font-black tracking-[-0.045em] leading-[0.86]"
-            style={{ fontSize: "clamp(4.2rem, 8vw, 7.5rem)" }}
+            className="reveal reveal-d1 mt-6 font-display font-black tracking-[-0.045em] leading-[0.9]"
+            style={{ fontSize: "clamp(3.8rem, 7.2vw, 6.8rem)" }}
           >
-            <span className="flex items-center gap-4">
-              TURNING
+            <span className="flex flex-wrap items-center gap-x-4">
+              <span>TURNING IPL DATA</span>
               <span
                 aria-hidden="true"
                 className="shape-grain inline-block shrink-0 rounded-full bg-boundary"
-                style={{ width: "clamp(2.4rem,4vw,3.6rem)", height: "clamp(2.4rem,4vw,3.6rem)" }}
+                style={{ width: "clamp(1.8rem,3vw,2.8rem)", height: "clamp(1.8rem,3vw,2.8rem)" }}
               />
             </span>
-            <span className="flex items-center gap-4 mt-1">
-              <span
-                aria-hidden="true"
-                className="shape-grain inline-block shrink-0 rounded-r-full bg-royal"
-                style={{ width: "clamp(3.5rem,6vw,7rem)", height: "clamp(1.8rem,3vw,3rem)" }}
-              />
-              <span>IPL DATA</span>
-            </span>
-            <span className="flex items-center gap-4 mt-1">
-              <span>INTO</span>
+            <span className="flex flex-wrap items-center gap-x-4 mt-1">
+              <span>INTO INSIGHTS.</span>
               <span
                 aria-hidden="true"
                 className="shape-grain inline-block shrink-0 rotate-45 bg-trophy"
-                style={{ width: "clamp(2.2rem,3.6vw,3.6rem)", height: "clamp(2.2rem,3.6vw,3.6rem)" }}
+                style={{ width: "clamp(1.6rem,2.8vw,2.6rem)", height: "clamp(1.6rem,2.8vw,2.6rem)" }}
               />
-              <span>INSIGHTS.</span>
             </span>
           </h1>
 
-          {/* EYE PATH CONNECTOR: Dotted line from headline to description */}
+          {/* EYE PATH CONNECTOR: Grey/black line next to description */}
           <div className="relative mt-6 pl-4">
-            {/* Visual connector lines */}
-            <div className="absolute left-0 top-0 bottom-0 w-0.5 border-l border-dashed border-ink/20" aria-hidden="true" />
-            <div className="absolute left-0 top-3 w-3 h-0.5 bg-ink/20" aria-hidden="true" />
+            {/* Visual connector lines (Grey instead of orange) */}
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-ink/20" aria-hidden="true" />
             
             {/* Project description */}
-            <p className="reveal reveal-d2 pl-2 text-sm font-medium leading-[1.8] text-ink/55 max-w-[42ch]">
+            <p className="reveal reveal-d2 pl-3 text-[1.05rem] lg:text-[1.12rem] font-semibold leading-[1.75] text-ink/75 max-w-[45ch]">
               An end-to-end IPL data engineering pipeline — raw ball-by-ball JSON
               transformed through Bronze, Silver, and Gold layers into analytics-ready insights.
             </p>
 
+            {/* Tech Tags - Moved directly below description */}
+            <div className="reveal reveal-d3 mt-6 pl-3 flex items-center gap-3 flex-wrap">
+              <span className="text-[9px] font-black uppercase tracking-wider text-ink/35">Built with:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {TECH.map((t) => (
+                  <span
+                    key={t}
+                    className="border border-ink/10 bg-white/30 px-2 py-0.5 text-[8.5px] font-bold tracking-[0.18em] text-ink/50"
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+
             {/* CTA Buttons */}
-            <div className="reveal reveal-d3 mt-6 pl-2 flex flex-wrap items-center gap-4">
+            <div className="reveal reveal-d4 mt-6 pl-3 flex flex-wrap items-center gap-4">
               <a
                 href="#architecture"
                 className="cta-btn group inline-flex items-center gap-3 bg-ink px-6 py-3.5 text-xs font-black uppercase tracking-[0.14em] text-white transition-all duration-300 hover:bg-boundary"
@@ -262,18 +285,6 @@ export default function HeroSection() {
                 Player Analytics
               </a>
             </div>
-
-            {/* Tech Tags */}
-            <div className="reveal reveal-d4 mt-7 pl-2 flex flex-wrap gap-1.5">
-              {TECH.map((t) => (
-                <span
-                  key={t}
-                  className="border border-ink/10 px-2.5 py-1 text-[9px] font-bold tracking-[0.2em] text-ink/40"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
           </div>
         </div>
 
@@ -284,35 +295,40 @@ export default function HeroSection() {
           style={{ minHeight: "82vh" }}
           aria-label="IPL data pipeline visualization"
         >
-          {/* Big geometric backgrounds (subtle movement, no players) */}
+          {/* Labeled geometric backgrounds (color-matched to Bronze/Silver/Gold layers) */}
           <span
             data-depth="0.25"
             aria-hidden="true"
-            className="shape-grain absolute rounded-full bg-boundary/10 spin-slow-rev"
-            style={{ width: "65%", aspectRatio: "1", top: "8%", right: "-10%" }}
-          />
+            className="shape-grain absolute rounded-full bg-boundary/8 flex items-center justify-center border border-boundary/15 spin-slow-rev"
+            style={{ width: "60%", aspectRatio: "1", top: "8%", right: "-8%" }}
+          >
+            <span className="text-[10px] font-black tracking-[0.25em] text-boundary/40 uppercase mt-[-45%]">BRONZE</span>
+          </span>
 
           <span
             data-depth="0.1"
             aria-hidden="true"
-            className="shape-grain absolute rounded-[2rem] bg-royal/8"
-            style={{ width: "40%", height: "40%", bottom: "8%", left: "2%" }}
-          />
+            className="shape-grain absolute rounded-[2rem] bg-royal/6 flex items-center justify-center border border-royal/15"
+            style={{ width: "38%", height: "38%", bottom: "8%", left: "2%" }}
+          >
+            <span className="text-[10px] font-black tracking-[0.25em] text-royal/40 uppercase -rotate-12">SILVER</span>
+          </span>
 
-          {/* Spinning dashed ring */}
           <span
             data-depth="0.18"
             aria-hidden="true"
-            className="absolute rounded-full border border-dashed border-ink/8 spin-med-rev"
-            style={{ width: "22%", aspectRatio: "1", top: "32%", right: "6%" }}
-          />
+            className="shape-grain absolute bg-trophy/6 flex items-center justify-center border border-trophy/15 rotate-45"
+            style={{ width: "24%", aspectRatio: "1", top: "25%", left: "72%" }}
+          >
+            <span className="text-[10px] font-black tracking-[0.25em] text-trophy/40 uppercase -rotate-45">GOLD</span>
+          </span>
 
           {/* Connection line from left column tags */}
           <div className="absolute left-[-5%] top-[55%] w-[15%] h-px border-t border-dashed border-ink/15 hidden lg:block" aria-hidden="true" />
           <span className="absolute left-[10%] top-[53.5%] h-2.5 w-2.5 rounded-full bg-ink/15 hidden lg:block" aria-hidden="true" />
 
-          {/* SVG Pipeline Diagram */}
-          <div data-depth="0.15" className="relative z-10 w-full reveal reveal-d3 px-4">
+          {/* SVG Pipeline Diagram (Scaled up slightly to fill space, with overflow allowed) */}
+          <div data-depth="0.15" className="relative z-10 w-[125%] -ml-[10%] reveal reveal-d3 px-2 overflow-visible">
             <MedallionSVG />
           </div>
         </div>
@@ -325,25 +341,20 @@ export default function HeroSection() {
       <div className="hidden pt-10 pb-8 md:block lg:hidden">
         <div className="reveal flex items-center gap-3">
           <span className="h-px w-8 bg-ink/20" aria-hidden="true" />
-          <Label>IPL DATA PIPELINE</Label>
+          <Label>IPL DATA PIPELINE · 1,243 MATCHES · 2008–2026</Label>
         </div>
 
         <h1
-          className="reveal reveal-d1 mt-5 font-display font-black tracking-[-0.045em] leading-[0.87]"
-          style={{ fontSize: "clamp(3.6rem, 8vw, 5.5rem)" }}
+          className="reveal reveal-d1 mt-5 font-display font-black tracking-[-0.045em] leading-[0.9]"
+          style={{ fontSize: "clamp(3rem, 7vw, 4.8rem)" }}
         >
           <span className="flex items-center gap-3">
-            TURNING
-            <span aria-hidden="true" className="shape-grain inline-block shrink-0 rounded-full bg-boundary w-10 h-10" />
+            TURNING IPL DATA
+            <span aria-hidden="true" className="shape-grain inline-block shrink-0 rounded-full bg-boundary w-8 h-8" />
           </span>
           <span className="flex items-center gap-3 mt-1">
-            <span aria-hidden="true" className="shape-grain inline-block shrink-0 rounded-r-full bg-royal w-16 h-6" />
-            IPL DATA
-          </span>
-          <span className="flex items-center gap-3 mt-1">
-            INTO
-            <span aria-hidden="true" className="shape-grain inline-block shrink-0 rotate-45 bg-trophy w-9 h-9" />
-            INSIGHTS.
+            INTO INSIGHTS.
+            <span aria-hidden="true" className="shape-grain inline-block shrink-0 rotate-45 bg-trophy w-7 h-7" />
           </span>
         </h1>
 
@@ -376,25 +387,20 @@ export default function HeroSection() {
       <div className="pt-8 pb-8 md:hidden">
         <div className="reveal flex items-center gap-2">
           <span className="h-px w-5 bg-ink/20" aria-hidden="true" />
-          <Label>IPL DATA PIPELINE</Label>
+          <Label>IPL DATA PIPELINE · 1,243 MATCHES · 2008–2026</Label>
         </div>
 
         <h1
-          className="reveal reveal-d1 mt-4 font-display font-black tracking-[-0.05em] leading-[0.87]"
-          style={{ fontSize: "clamp(2.4rem, 10vw, 3.5rem)" }}
+          className="reveal reveal-d1 mt-4 font-display font-black tracking-[-0.05em] leading-[0.9]"
+          style={{ fontSize: "clamp(2rem, 9vw, 3rem)" }}
         >
           <span className="flex items-center gap-2">
-            TURNING
+            TURNING IPL DATA
             <span aria-hidden="true" className="shape-grain inline-block shrink-0 rounded-full bg-boundary w-6 h-6" />
           </span>
           <span className="flex items-center gap-2 mt-0.5">
-            <span aria-hidden="true" className="shape-grain inline-block shrink-0 rounded-r-full bg-royal w-10 h-5" />
-            IPL DATA
-          </span>
-          <span className="flex items-center gap-2 mt-0.5">
-            INTO
-            <span aria-hidden="true" className="shape-grain inline-block shrink-0 rotate-45 bg-trophy w-6 h-6" />
-            INSIGHTS.
+            INTO INSIGHTS.
+            <span aria-hidden="true" className="shape-grain inline-block shrink-0 rotate-45 bg-trophy w-5.5 h-5.5" />
           </span>
         </h1>
 
@@ -414,6 +420,17 @@ export default function HeroSection() {
             <MedallionSVG />
           </div>
         </div>
+      </div>
+
+      {/* Scroll Down Indicator */}
+      <div 
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 animate-bounce z-10 cursor-pointer hidden lg:flex" 
+        onClick={() => document.getElementById("architecture")?.scrollIntoView({ behavior: "smooth" })}
+      >
+        <span className="text-[9px] font-black tracking-[0.25em] text-ink/30 uppercase">Scroll Down</span>
+        <svg className="w-4 h-4 text-ink/35" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+        </svg>
       </div>
     </section>
   );

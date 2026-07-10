@@ -13,12 +13,12 @@ export default function Navbar() {
 
         {/* Nav links — desktop */}
         <nav
-          className="hidden items-center gap-8 text-[11px] font-bold uppercase tracking-[0.2em] text-ink/50 md:flex"
+          className="hidden items-center gap-12 text-[11px] font-bold uppercase tracking-[0.2em] text-ink/50 md:flex"
           aria-label="Primary navigation"
         >
-          <a href="#pipeline" className="transition-colors duration-200 hover:text-ink">Pipeline</a>
-          <a href="#stats"    className="transition-colors duration-200 hover:text-ink">Analytics</a>
-          <a href="#seasons"  className="transition-colors duration-200 hover:text-ink">Architecture</a>
+          <a href="#pipeline" className="transition-colors duration-200 hover:text-boundary hover:underline hover:decoration-2 hover:underline-offset-4 hover:decoration-boundary">Pipeline</a>
+          <a href="#stats"    className="transition-colors duration-200 hover:text-boundary hover:underline hover:decoration-2 hover:underline-offset-4 hover:decoration-boundary">Analytics</a>
+          <a href="#seasons"  className="transition-colors duration-200 hover:text-boundary hover:underline hover:decoration-2 hover:underline-offset-4 hover:decoration-boundary">Architecture</a>
           <a
             href="https://github.com"
             target="_blank"

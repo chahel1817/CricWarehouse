@@ -9,9 +9,11 @@ const LEGENDS = [
     number: "18",
     firstName: "VIRAT",
     lastName: "KOHLI",
-    stat: "8,000+",
-    statLabel: "CAREER RUNS",
-    subStat: "17 IPL SEASONS",
+    stat: "8,004",
+    statLabel: "RUNS FROM PIPELINE",
+    subStat: "243 INNINGS · STRIKE RATE: 131.2 · AVG: 37.2",
+    label: "JERSEY #18 · ACTIVE SINCE 2008",
+    pipelineSource: "Data computed from 1,243 JSON files via PySpark silver layer",
     src: "/players/virat.avif",
     imgW: 520,
     imgH: 520,
@@ -19,7 +21,7 @@ const LEGENDS = [
     shapeStyle: "rounded-full",
     accentColor: "bg-boundary",
     accentText: "text-boundary",
-    numberColor: "rgba(255,90,47,0.06)",
+    numberColor: "rgba(255,90,47,0.10)",
     floatClass: "float-1",
     enterDelay: "0.08s",
     imageAlign: "right",
@@ -30,9 +32,11 @@ const LEGENDS = [
     number: "7",
     firstName: "MS",
     lastName: "DHONI",
-    stat: "5×",
-    statLabel: "IPL CHAMPION",
-    subStat: "4,746 CAREER RUNS",
+    stat: "4,746",
+    statLabel: "RUNS FROM PIPELINE",
+    subStat: "5× CHAMPION · STRIKE RATE: 135.2 · AVG: 38.8",
+    label: "JERSEY #07 · ACTIVE SINCE 2008",
+    pipelineSource: "Data computed from 1,243 JSON files via PySpark silver layer",
     src: "/players/dhoni.avif",
     imgW: 460,
     imgH: 700,
@@ -40,7 +44,7 @@ const LEGENDS = [
     shapeStyle: "rounded-[3rem]",
     accentColor: "bg-trophy",
     accentText: "text-trophy",
-    numberColor: "rgba(247,201,72,0.07)",
+    numberColor: "rgba(247,201,72,0.11)",
     floatClass: "float-2",
     enterDelay: "0.18s",
     imageAlign: "left",
@@ -52,8 +56,10 @@ const LEGENDS = [
     firstName: "ROHIT",
     lastName: "SHARMA",
     stat: "6,628",
-    statLabel: "CAREER RUNS",
-    subStat: "5× MI CHAMPION",
+    statLabel: "RUNS FROM PIPELINE",
+    subStat: "257 MATCHES · STRIKE RATE: 131.3 · AVG: 29.5",
+    label: "JERSEY #45 · ACTIVE SINCE 2008",
+    pipelineSource: "Data computed from 1,243 JSON files via PySpark silver layer",
     src: "/players/rohitt.avif",
     imgW: 460,
     imgH: 700,
@@ -61,7 +67,7 @@ const LEGENDS = [
     shapeStyle: "rounded-t-full",
     accentColor: "bg-royal",
     accentText: "text-royal",
-    numberColor: "rgba(61,99,255,0.06)",
+    numberColor: "rgba(61,99,255,0.10)",
     floatClass: "float-3",
     enterDelay: "0.28s",
     imageAlign: "right",
@@ -90,7 +96,7 @@ export default function PlayerShowcase() {
     <section
       id="players"
       ref={sectionRef}
-      className="relative border-t border-ink/10 pt-12 pb-12 overflow-hidden"
+      className="relative border-t border-ink/10 pt-6 pb-12 overflow-hidden"
       aria-label="Player analytics showcase"
     >
       {/* Section Header */}
@@ -106,9 +112,8 @@ export default function PlayerShowcase() {
           style={{ fontSize: "clamp(2.6rem, 5vw, 4.8rem)" }}
         >
           THE NUMBERS
-          <br />
           <span
-            className="font-black"
+            className="block font-black"
             style={{ WebkitTextStroke: "2px rgba(23,23,23,0.75)", color: "transparent" }}
           >
             BEHIND THE LEGENDS.
@@ -117,10 +122,23 @@ export default function PlayerShowcase() {
       </div>
 
       {/* Player Compositions List */}
-      <div className="mt-10 flex flex-col gap-0 border-t border-ink/8">
+      <div className="mt-10 flex flex-col gap-0 border-t border-ink/8 pt-12">
         {LEGENDS.map((p, idx) => (
           <PlayerComposition key={p.id} player={p} idx={idx} />
         ))}
+      </div>
+
+      {/* View All Player Stats CTA */}
+      <div className="scroll-reveal mt-12 flex justify-center animate-fade-in" style={{ transitionDelay: "0.2s" }}>
+        <a
+          href="/players"
+          className="group inline-flex items-center gap-3 border-2 border-ink px-8 py-4 text-xs font-black uppercase tracking-[0.18em] text-ink bg-transparent transition-all duration-300 hover:bg-ink hover:text-[#f7f5ef] hover:shadow-md"
+        >
+          View All Player Stats
+          <svg className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </a>
       </div>
     </section>
   );
@@ -220,8 +238,8 @@ function PlayerComposition({ player: p, idx }) {
           {/* Jersey Label */}
           <div className="flex items-center gap-3 mb-3">
             <span className={`h-0.5 w-8 ${p.accentColor}`} aria-hidden="true" />
-            <span style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(23,23,23,0.36)" }}>
-              LEGEND / #0{p.number}
+            <span style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(23,23,23,0.45)" }}>
+              {p.label}
             </span>
           </div>
 
@@ -250,11 +268,14 @@ function PlayerComposition({ player: p, idx }) {
               {p.stat}
             </span>
             <div className="mb-0.5 flex flex-col gap-0.5">
-              <span style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(23,23,23,0.65)" }}>
+              <span style={{ fontSize: "9.5px", fontWeight: 800, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(23,23,23,0.7)" }}>
                 {p.statLabel}
               </span>
-              <span style={{ fontSize: "8px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(23,23,23,0.35)" }}>
+              <span style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(23,23,23,0.55)" }}>
                 {p.subStat}
+              </span>
+              <span style={{ fontSize: "8px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,90,47,0.85)", marginTop: "2px" }}>
+                {p.pipelineSource}
               </span>
             </div>
           </div>

@@ -11,7 +11,13 @@ const PIPELINE_STAGES = [
     accent: "bg-boundary",
     accentText: "text-boundary",
     border: "border-boundary/30",
+    borderLeft: "border-l-boundary",
     desc: "Raw IPL JSON and match data",
+    icon: (
+      <svg className="w-3.5 h-3.5 text-boundary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+      </svg>
+    ),
     details: [
       "Schema validation & enforcement",
       "Ingested directly from raw ball-by-ball matches",
@@ -27,7 +33,13 @@ const PIPELINE_STAGES = [
     accent: "bg-royal",
     accentText: "text-royal",
     border: "border-royal/30",
+    borderLeft: "border-l-royal",
     desc: "Cleaned, validated, and transformed PySpark datasets",
+    icon: (
+      <svg className="w-3.5 h-3.5 text-royal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+      </svg>
+    ),
     details: [
       "PySpark deduplication & cleaning",
       "Null values & format normalization",
@@ -43,7 +55,13 @@ const PIPELINE_STAGES = [
     accent: "bg-trophy",
     accentText: "text-trophy",
     border: "border-trophy/30",
+    borderLeft: "border-l-trophy",
     desc: "Aggregated player, team, season, and match analytics",
+    icon: (
+      <svg className="w-3.5 h-3.5 text-trophy" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+      </svg>
+    ),
     details: [
       "Analytics-ready SQL rollup views",
       "Aggregated player & team standings",
@@ -96,21 +114,18 @@ export default function MedallionSection() {
           <span className="text-boundary">TO GOLD INSIGHTS.</span>
         </h2>
         <p className="mt-5 max-w-[50ch] text-[0.9rem] font-medium leading-[1.75] text-ink/50">
-          CricFlow processes ball-by-ball matches through three robust, schema-validated layers to deliver highly optimized analytics.
+          CricWarehouse processes 1,243 matches and 250,000+ deliveries through three schema-validated layers using PySpark 4.1.
         </p>
       </div>
 
       {/* ── Pipeline Architecture Flow ── */}
       <div className="relative mt-14">
-        {/* Horizontal Line connecting stages on desktop */}
-        <div className="absolute top-[28px] left-[5%] right-[5%] h-0.5 bg-ink/8 hidden lg:block z-0" aria-hidden="true" />
-
         {/* Stages list container */}
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-3 lg:gap-8 relative z-10">
           {PIPELINE_STAGES.map((stage, i) => (
             <div
               key={stage.id}
-              className="scroll-reveal flex flex-col"
+              className={`scroll-reveal relative flex flex-col p-6 rounded-2xl border-l-4 ${stage.borderLeft} bg-white/40 shadow-sm transition-all duration-300 hover:shadow-md hover:bg-white/60 hover:-translate-y-1 min-h-[380px] lg:min-h-[410px]`}
               style={{ transitionDelay: `${0.1 + i * 0.12}s` }}
             >
               {/* Header node with number + line */}
@@ -130,19 +145,31 @@ export default function MedallionSection() {
               </div>
 
               {/* Description */}
-              <h3 className="mt-5 font-display text-lg font-black leading-snug tracking-tight text-ink/85 max-w-[24ch]">
+              <h3 className="mt-5 font-display text-xl font-black leading-snug tracking-tight text-ink/90">
                 {stage.desc}
               </h3>
 
               {/* List details */}
-              <ul className="mt-6 flex flex-col gap-3 border-t border-ink/8 pt-5">
+              <ul className="mt-6 flex flex-col gap-3 border-t border-ink/8 pt-5 mt-auto">
                 {stage.details.map((detail, idx) => (
                   <li key={idx} className="flex items-start gap-2.5">
-                    <span className={`h-1.5 w-1.5 rounded-full mt-1.5 shrink-0 ${stage.accent}`} aria-hidden="true" />
-                    <span className="text-[12px] font-medium leading-relaxed text-ink/60">{detail}</span>
+                    <span className="mt-1 shrink-0" aria-hidden="true">
+                      {stage.icon}
+                    </span>
+                    <span className="text-[12px] font-medium leading-relaxed text-ink/65">{detail}</span>
                   </li>
                 ))}
               </ul>
+
+              {/* Thin dotted arrow lines showing data flow direction between cards (desktop only) */}
+              {i < 2 && (
+                <div className="hidden lg:flex absolute right-[-2.25rem] top-1/2 -translate-y-1/2 w-[2rem] z-0 items-center justify-center pointer-events-none">
+                  <div className="w-full h-px border-t-2 border-dotted border-ink/20" />
+                  <svg className="w-3 h-3 text-ink/20 absolute right-[-2px] top-1/2 -translate-y-1/2" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </div>
+              )}
             </div>
           ))}
         </div>
