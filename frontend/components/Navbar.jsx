@@ -1,26 +1,55 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
+
 export default function Navbar() {
+  const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const links = [
+    { label: "Home", href: "/" },
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Teams", href: "/teams" },
+    { label: "Players", href: "/players" },
+    { label: "Venues", href: "/venues" }
+  ];
+
   return (
-    <header className="relative">
+    <header className="relative z-50">
       <div className="flex items-center justify-between py-5 md:py-6">
         {/* Brand */}
-        <a
+        <Link
           href="/"
           className="font-display text-[1.45rem] font-black tracking-[-0.03em] md:text-[1.65rem]"
         >
           Cric<span className="text-boundary">Warehouse</span>
           <span className="ml-0.5 text-boundary">.</span>
-        </a>
+        </Link>
 
         {/* Nav links — desktop */}
         <nav
-          className="hidden items-center gap-12 text-[11px] font-bold uppercase tracking-[0.2em] text-ink/50 md:flex"
+          className="hidden items-center gap-10 text-[11px] font-bold uppercase tracking-[0.2em] text-ink/50 md:flex"
           aria-label="Primary navigation"
         >
-          <a href="#pipeline" className="transition-colors duration-200 hover:text-boundary hover:underline hover:decoration-2 hover:underline-offset-4 hover:decoration-boundary">Pipeline</a>
-          <a href="#stats"    className="transition-colors duration-200 hover:text-boundary hover:underline hover:decoration-2 hover:underline-offset-4 hover:decoration-boundary">Analytics</a>
-          <a href="#seasons"  className="transition-colors duration-200 hover:text-boundary hover:underline hover:decoration-2 hover:underline-offset-4 hover:decoration-boundary">Architecture</a>
+          {links.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`transition-colors duration-200 hover:text-boundary hover:underline hover:decoration-2 hover:underline-offset-4 hover:decoration-boundary ${
+                  isActive ? "text-ink underline decoration-2 underline-offset-4 decoration-boundary font-black" : "text-ink/50"
+                }`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+          
           <a
-            href="https://github.com"
+            href="https://github.com/chahel1817/CricWarehouse"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 border border-ink/20 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-ink transition hover:border-ink hover:bg-ink hover:text-white"
@@ -38,16 +67,47 @@ export default function Navbar() {
           </a>
         </nav>
 
-        {/* Mobile hamburger */}
+        {/* Mobile Hamburger button */}
         <button
           type="button"
           aria-label="Open menu"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-full border border-transparent transition hover:border-ink/20 hover:bg-ink/5 md:hidden"
         >
-          <span className="block h-0.5 w-5 bg-ink" />
-          <span className="block h-0.5 w-5 bg-ink" />
+          <span className={`block h-0.5 w-5 bg-ink transition-transform duration-300 ${mobileMenuOpen ? "rotate-45 translate-y-2" : ""}`} />
+          <span className={`block h-0.5 w-5 bg-ink transition-opacity duration-300 ${mobileMenuOpen ? "opacity-0" : ""}`} />
+          <span className={`block h-0.5 w-5 bg-ink transition-transform duration-300 ${mobileMenuOpen ? "-rotate-45 -translate-y-2" : ""}`} />
         </button>
       </div>
+
+      {/* Mobile Menu Panel */}
+      {mobileMenuOpen && (
+        <div className="absolute top-16 left-0 right-0 bg-paper border border-ink/15 rounded-2xl p-6 shadow-hard flex flex-col gap-4 z-50 md:hidden animate-fade-in">
+          {links.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`text-[12px] font-bold uppercase tracking-wider py-2 border-b border-ink/5 ${
+                  isActive ? "text-boundary font-black" : "text-ink/60"
+                }`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+          <a
+            href="https://github.com/chahel1817/CricWarehouse"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 border border-ink/25 py-3 text-xs font-black uppercase tracking-wider text-white bg-ink transition hover:bg-boundary"
+          >
+            GitHub
+          </a>
+        </div>
+      )}
 
       {/* Thin horizontal divider */}
       <div className="h-px w-full bg-ink/12" />
