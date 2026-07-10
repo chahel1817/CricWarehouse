@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { FastForward } from 'lucide-react';
 import Image from "next/image";
 
 const LEGENDS = [
@@ -135,9 +136,7 @@ export default function PlayerShowcase() {
           className="group inline-flex items-center gap-3 border-2 border-ink px-8 py-4 text-xs font-black uppercase tracking-[0.18em] text-ink bg-transparent transition-all duration-300 hover:bg-ink hover:text-[#f7f5ef] hover:shadow-md"
         >
           View All Player Stats
-          <svg className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
+           <FastForward/>
         </a>
       </div>
     </section>

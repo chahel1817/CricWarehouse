@@ -63,9 +63,13 @@ const MOCK_DATA = {
 
 async function fetchFromApi(endpoint, params = {}) {
   const url = new URL(`${API_BASE_URL}${endpoint}`);
-  Object.keys(params).forEach(key => {
-    if (params[key] !== undefined && params[key] !== null && params[key] !== "All Seasons") {
-      url.searchParams.append(key, params[key]);
+  
+  // Safely normalize params to a valid object
+  const safeParams = params && typeof params === 'object' ? params : {};
+  
+  Object.keys(safeParams).forEach(key => {
+    if (safeParams[key] !== undefined && safeParams[key] !== null && safeParams[key] !== "All Seasons") {
+      url.searchParams.append(key, safeParams[key]);
     }
   });
 

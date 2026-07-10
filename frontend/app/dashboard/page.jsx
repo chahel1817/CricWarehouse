@@ -29,7 +29,7 @@ export default function DashboardPage() {
         const [matchesRes, performersRes, venuesRes, battingRes] = await Promise.all([
           api.getMatches({ season: seasonParam, limit: 10 }),
           api.getTopPerformers({ season: seasonParam, limit: 5 }),
-          api.getVenueStats(seasonParam),
+          api.getVenueStats({ season: seasonParam }),
           api.getBattingLeaderboard({ season: seasonParam, limit: 150 })
         ]);
 

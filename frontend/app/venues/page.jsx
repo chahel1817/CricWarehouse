@@ -17,7 +17,7 @@ export default function VenuesPage() {
       setLoading(true);
       try {
         const seasonParam = season === "All Seasons" ? null : parseInt(season);
-        const data = await api.getVenueStats(seasonParam);
+        const data = await api.getVenueStats({ season: seasonParam });
         setVenueStats(data || []);
         if (data && data.length > 0) {
           setSelectedVenue(data[0]);
