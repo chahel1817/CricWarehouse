@@ -5,8 +5,8 @@ import PlayerShowcase from "@/components/PlayerShowcase";
 
 export default function Home() {
   return (
-    <main className="min-h-screen px-3 py-4 text-ink sm:px-5 sm:py-6" role="main">
-      <section className="grain mx-auto max-w-7xl rounded-[1.75rem] bg-paper px-5 py-0 shadow-soft sm:px-8 md:px-12 lg:px-14 overflow-hidden">
+    <main className="min-h-screen text-ink bg-paper grain w-full overflow-hidden" role="main">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 md:px-12 lg:px-14">
 
         {/* ── Navbar ── */}
         <div className="py-0">
@@ -46,7 +46,7 @@ export default function Home() {
             </div>
           </div>
         </footer>
-      </section>
+      </div>
     </main>
   );
 }
