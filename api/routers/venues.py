@@ -31,3 +31,13 @@ def get_venue_stats(
         return data_service.query_venues(season=season)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load venue stats: {str(e)}")
+
+@router.get("/details", response_model=Dict[str, Any])
+def get_venue_details(
+    venue: str = Query(..., description="The name of the venue to retrieve details for.")
+):
+    """Retrieve dynamic stats for a specific venue (most wins by a team, toss win rate, top batsman, and historical chart data)."""
+    try:
+        return data_service.get_venue_details(venue)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load venue details: {str(e)}")

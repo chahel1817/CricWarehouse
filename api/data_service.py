@@ -8,12 +8,87 @@ Caches dataframes in memory for fast response times.
 
 import os
 import pandas as pd
+import numpy as np
 from pandas.api.types import is_scalar
 from typing import Optional, List, Dict, Any
 
 PLAYER_ALIASES = {
     "viratkohli": "V Kohli",
 }
+
+BOWLING_TYPE_OVERRIDES = {
+    # Pace / seam
+    "A Nehra": "Pacer",
+    "AB Dinda": "Pacer",
+    "B Kumar": "Pacer",
+    "CH Morris": "Pacer",
+    "CRD Fernando": "Pacer",
+    "DJ Bravo": "Pacer",
+    "DP Nannes": "Pacer",
+    "DS Kulkarni": "Pacer",
+    "DW Steyn": "Pacer",
+    "Harshal Patel": "Pacer",
+    "I Sharma": "Pacer",
+    "IK Pathan": "Pacer",
+    "J Archer": "Pacer",
+    "JD Unadkat": "Pacer",
+    "JJ Bumrah": "Pacer",
+    "JP Faulkner": "Pacer",
+    "K Rabada": "Pacer",
+    "L Balaji": "Pacer",
+    "LH Ferguson": "Pacer",
+    "M Morkel": "Pacer",
+    "MA Starc": "Pacer",
+    "MM Sharma": "Pacer",
+    "Mohammed Shami": "Pacer",
+    "Mohammed Siraj": "Pacer",
+    "Mustafizur Rahman": "Pacer",
+    "P Kumar": "Pacer",
+    "RP Singh": "Pacer",
+    "S Sandeep Warrier": "Pacer",
+    "S Sreesanth": "Pacer",
+    "SL Malinga": "Pacer",
+    "SP Narine": "Spinner",
+    "SR Watson": "Pacer",
+    "TA Boult": "Pacer",
+    "UT Yadav": "Pacer",
+    "VR Aaron": "Pacer",
+    "Z Khan": "Pacer",
+    # Spin
+    "A Mishra": "Spinner",
+    "AR Patel": "Spinner",
+    "Bishnoi": "Spinner",
+    "CV Varun": "Spinner",
+    "Harbhajan Singh": "Spinner",
+    "Imran Tahir": "Spinner",
+    "Kuldeep Yadav": "Spinner",
+    "M Muralitharan": "Spinner",
+    "PP Chawla": "Spinner",
+    "R Ashwin": "Spinner",
+    "RA Jadeja": "Spinner",
+    "RD Chahar": "Spinner",
+    "Rashid Khan": "Spinner",
+    "S Badree": "Spinner",
+    "S Nadeem": "Spinner",
+    "Shakib Al Hasan": "Spinner",
+    "SK Raina": "Spinner",
+    "SK Warne": "Spinner",
+    "Washington Sundar": "Spinner",
+    "YBK Jaiswal": "Spinner",
+    "YS Chahal": "Spinner",
+}
+
+PACE_HINTS = (
+    "kumar", "shami", "siraj", "bumrah", "malinga", "boult", "starc", "steyn",
+    "morkel", "rabada", "archer", "umesh", "ishant", "nehra", "natarajan",
+    "unadkat", "sandeep", "thakur", "ferguson", "mustafizur", "pathirana",
+)
+
+SPIN_HINTS = (
+    "ashwin", "chahal", "chawla", "mishra", "jadeja", "narine", "rashid",
+    "kuldeep", "harbhajan", "warne", "tahir", "axar", "bishnoi", "varun",
+    "sundar", "shakib", "muralitharan", "gopal", "nadeem",
+)
 
 def normalize_query_team(team_name: Optional[str]) -> Optional[str]:
     """
@@ -77,6 +152,18 @@ def validate_sort_column(sort_by: str, valid_cols: List[str], default_col: str) 
         valid = ", ".join(valid_cols)
         raise ValueError(f"Invalid sort_by '{sort_by}'. Valid values are: {valid}")
     return sort_by
+
+def classify_bowling_type(player_name: str) -> str:
+    """Best-effort bowling type classification for analytics filtering."""
+    if player_name in BOWLING_TYPE_OVERRIDES:
+        return BOWLING_TYPE_OVERRIDES[player_name]
+
+    compact = normalize_lookup_text(player_name)
+    if any(hint in compact for hint in SPIN_HINTS):
+        return "Spinner"
+    if any(hint in compact for hint in PACE_HINTS):
+        return "Pacer"
+    return "Unknown"
 
 class DataService:
     def __init__(self):
@@ -163,6 +250,9 @@ class DataService:
     def get_matches(self) -> pd.DataFrame:
         return self._get_df("silver", "matches")
 
+    def get_deliveries(self) -> pd.DataFrame:
+        return self._get_df("silver", "deliveries")
+
     # ---------- Specialized queries --------------------
 
     def get_all_teams(self) -> List[str]:
@@ -245,33 +335,109 @@ class DataService:
             ]
         return sorted_names[:limit]
 
-    def query_batting(self, season: Optional[int] = None, sort_by: str = "total_runs", ascending: bool = False, limit: int = 50) -> List[Dict[str, Any]]:
-        """Query player batting stats with filtering and sorting."""
-        df = self.get_player_batting()
-        filtered = df.copy()
-        
+    def _query_batting_from_deliveries(self, season: Optional[int] = None, team: Optional[str] = None) -> pd.DataFrame:
+        """Build batting stats from silver deliveries when team filtering is needed."""
+        deliveries = self.get_deliveries().copy()
+
         if season is not None:
-            filtered = filtered[filtered["season"] == season]
+            deliveries = deliveries[deliveries["season"] == season]
+
+        if team is not None:
+            normalized_team = normalize_query_team(team) or team
+            deliveries = deliveries[deliveries["batting_team"].str.lower() == normalized_team.lower()]
+
+        if deliveries.empty:
+            return pd.DataFrame(columns=[
+                "batter", "matches", "innings", "total_runs", "total_balls",
+                "total_fours", "total_sixes", "highest_score", "dismissals",
+                "not_outs", "fifties", "hundreds", "batting_avg", "strike_rate",
+                "season", "total_boundaries",
+            ])
+
+        balls = deliveries[deliveries["is_wide"] == False].copy()
+        batting_card = balls.groupby(
+            ["match_id", "season", "innings_number", "batter"], dropna=False
+        ).agg(
+            runs=("batter_runs", "sum"),
+            balls_faced=("batter_runs", "count"),
+            fours=("batter_runs", lambda s: int((s == 4).sum())),
+            sixes=("batter_runs", lambda s: int((s == 6).sum())),
+        ).reset_index()
+
+        dismissals = deliveries[deliveries["is_wicket"] == True][
+            ["match_id", "innings_number", "player_out"]
+        ].drop_duplicates().rename(columns={"player_out": "batter"})
+        dismissals["was_dismissed"] = True
+
+        batting_card = batting_card.merge(
+            dismissals,
+            on=["match_id", "innings_number", "batter"],
+            how="left",
+        )
+        batting_card["is_out"] = batting_card["was_dismissed"].fillna(False).astype(bool)
+
+        grouped = batting_card.groupby("batter", dropna=False).agg(
+            matches=("match_id", "nunique"),
+            innings=("match_id", "count"),
+            total_runs=("runs", "sum"),
+            total_balls=("balls_faced", "sum"),
+            total_fours=("fours", "sum"),
+            total_sixes=("sixes", "sum"),
+            highest_score=("runs", "max"),
+            dismissals=("is_out", "sum"),
+            not_outs=("is_out", lambda s: int((~s).sum())),
+            fifties=("runs", lambda s: int(((s >= 50) & (s < 100)).sum())),
+            hundreds=("runs", lambda s: int((s >= 100).sum())),
+        ).reset_index()
+
+        grouped["strike_rate"] = (grouped["total_runs"] / grouped["total_balls"].replace(0, np.nan) * 100).round(2)
+        grouped["batting_avg"] = (grouped["total_runs"] / grouped["dismissals"].replace(0, np.nan)).round(2)
+        grouped["batting_avg"] = grouped["batting_avg"].fillna(grouped["total_runs"])
+        grouped["season"] = season if season is not None else "All-Time"
+        grouped["total_boundaries"] = grouped["total_fours"] + grouped["total_sixes"]
+        if team is not None:
+            grouped["team"] = normalize_query_team(team) or team
+        return grouped
+
+    def query_batting(
+        self,
+        season: Optional[int] = None,
+        sort_by: str = "total_runs",
+        ascending: bool = False,
+        limit: int = 50,
+        team: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Query player batting stats with filtering and sorting."""
+        if team is not None:
+            filtered = self._query_batting_from_deliveries(season=season, team=team)
         else:
-            # Aggregate all-time if season is not specified
-            # Group by player (batter)
-            filtered = filtered.groupby("batter").agg({
-                "matches": "sum",
-                "innings": "sum",
-                "total_runs": "sum",
-                "total_balls": "sum",
-                "dismissals": "sum",
-                "total_fours": "sum",
-                "total_sixes": "sum",
-                "fifties": "sum",
-                "hundreds": "sum",
-                "highest_score": "max"
-            }).reset_index()
-            
-            # Recompute rates/averages
-            filtered["strike_rate"] = (filtered["total_runs"] / filtered["total_balls"].replace(0, 1) * 100).round(2)
-            filtered["batting_avg"] = (filtered["total_runs"] / filtered["dismissals"].replace(0, 1)).round(2)
-            filtered["season"] = "All-Time"
+            df = self.get_player_batting()
+            filtered = df.copy()
+        
+            if season is not None:
+                filtered = filtered[filtered["season"] == season]
+            else:
+                # Aggregate all-time if season is not specified
+                # Group by player (batter)
+                filtered = filtered.groupby("batter").agg({
+                    "matches": "sum",
+                    "innings": "sum",
+                    "total_runs": "sum",
+                    "total_balls": "sum",
+                    "dismissals": "sum",
+                    "total_fours": "sum",
+                    "total_sixes": "sum",
+                    "fifties": "sum",
+                    "hundreds": "sum",
+                    "highest_score": "max"
+                }).reset_index()
+                
+                # Recompute rates/averages
+                filtered["strike_rate"] = (filtered["total_runs"] / filtered["total_balls"].replace(0, 1) * 100).round(2)
+                filtered["batting_avg"] = (filtered["total_runs"] / filtered["dismissals"].replace(0, 1)).round(2)
+                filtered["season"] = "All-Time"
+
+            filtered["total_boundaries"] = filtered["total_fours"] + filtered["total_sixes"]
             
         sort_by = validate_sort_column(sort_by, list(filtered.columns), "total_runs")
             
@@ -279,32 +445,103 @@ class DataService:
         top_n = filtered.head(limit)
         return clean_records(top_n)
 
-    def query_bowling(self, season: Optional[int] = None, sort_by: str = "total_wickets", ascending: bool = False, limit: int = 50) -> List[Dict[str, Any]]:
-        """Query player bowling stats with filtering and sorting."""
-        df = self.get_player_bowling()
-        filtered = df.copy()
-        
+    def _query_bowling_from_deliveries(self, season: Optional[int] = None, team: Optional[str] = None) -> pd.DataFrame:
+        """Build bowling stats from silver deliveries when derived filters are needed."""
+        deliveries = self.get_deliveries().copy()
+
         if season is not None:
-            filtered = filtered[filtered["season"] == season]
-        else:
-            # Aggregate all-time if season is not specified
-            filtered = filtered.groupby("bowler").agg({
-                "matches": "sum",
-                "total_balls": "sum",
-                "total_runs_conceded": "sum",
-                "total_wickets": "sum",
-                "total_dots": "sum",
-                "four_wkt_hauls": "sum",
-                "five_wkt_hauls": "sum"
-            }).reset_index()
-            
-            # Recompute rates/averages
-            filtered["overs"] = (filtered["total_balls"] / 6).round(1)
-            filtered["economy"] = (filtered["total_runs_conceded"] / (filtered["total_balls"] / 6).replace(0, 1)).round(2)
-            filtered["bowling_avg"] = (filtered["total_runs_conceded"] / filtered["total_wickets"].replace(0, 1)).round(2)
-            filtered["bowling_sr"] = (filtered["total_balls"] / filtered["total_wickets"].replace(0, 1)).round(2)
-            filtered["dot_ball_pct"] = (filtered["total_dots"] / filtered["total_balls"].replace(0, 1) * 100).round(1)
-            filtered["season"] = "All-Time"
+            deliveries = deliveries[deliveries["season"] == season]
+
+        matches = self.get_matches()[["match_id", "team1", "team2"]].drop_duplicates("match_id")
+        deliveries = deliveries.merge(matches, on="match_id", how="left")
+        deliveries["bowling_team"] = np.where(
+            deliveries["batting_team"] == deliveries["team1"],
+            deliveries["team2"],
+            deliveries["team1"],
+        )
+
+        if team is not None:
+            normalized_team = normalize_query_team(team) or team
+            deliveries = deliveries[deliveries["bowling_team"].str.lower() == normalized_team.lower()]
+
+        if deliveries.empty:
+            return pd.DataFrame(columns=[
+                "bowler", "matches", "total_balls", "total_runs_conceded",
+                "total_wickets", "total_dots", "best_wickets_in_match",
+                "four_wkt_hauls", "five_wkt_hauls", "maiden_overs",
+                "overs", "economy", "bowling_avg", "bowling_sr", "dot_ball_pct",
+                "season",
+            ])
+
+        deliveries["bowler_runs"] = deliveries["total_runs"] - deliveries["legbyes"] - deliveries["byes"]
+        deliveries["is_legal"] = ~(deliveries["is_wide"].astype(bool) | deliveries["is_noball"].astype(bool))
+        excluded_dismissals = {"run out", "retired hurt", "retired out", "obstructing the field"}
+        deliveries["credited_wicket"] = deliveries["is_wicket"].astype(bool) & ~deliveries["dismissal_kind"].isin(excluded_dismissals)
+        deliveries["dot_ball"] = deliveries["bowler_runs"] == 0
+
+        spell = deliveries.groupby(["match_id", "season", "bowler"], dropna=False).agg(
+            runs_conceded=("bowler_runs", "sum"),
+            wickets=("credited_wicket", "sum"),
+            dots=("dot_ball", "sum"),
+            legal_balls=("is_legal", "sum"),
+        ).reset_index()
+
+        over_summary = deliveries.groupby(["match_id", "season", "bowler", "over_number"], dropna=False).agg(
+            over_runs=("bowler_runs", "sum"),
+            legal_balls=("is_legal", "sum"),
+        ).reset_index()
+        maiden_summary = over_summary[
+            (over_summary["legal_balls"] == 6) & (over_summary["over_runs"] == 0)
+        ].groupby(["match_id", "season", "bowler"], dropna=False).size().reset_index(name="maidens")
+
+        spell = spell.merge(maiden_summary, on=["match_id", "season", "bowler"], how="left")
+        spell["maidens"] = spell["maidens"].fillna(0).astype(int)
+
+        grouped = spell.groupby("bowler", dropna=False).agg(
+            matches=("match_id", "nunique"),
+            total_balls=("legal_balls", "sum"),
+            total_runs_conceded=("runs_conceded", "sum"),
+            total_wickets=("wickets", "sum"),
+            total_dots=("dots", "sum"),
+            best_wickets_in_match=("wickets", "max"),
+            four_wkt_hauls=("wickets", lambda s: int((s >= 4).sum())),
+            five_wkt_hauls=("wickets", lambda s: int((s >= 5).sum())),
+            maiden_overs=("maidens", "sum"),
+        ).reset_index()
+
+        grouped["overs"] = (grouped["total_balls"] / 6).round(1)
+        grouped["economy"] = (grouped["total_runs_conceded"] / (grouped["total_balls"] / 6).replace(0, np.nan)).round(2)
+        grouped["bowling_avg"] = (grouped["total_runs_conceded"] / grouped["total_wickets"].replace(0, np.nan)).round(2)
+        grouped["bowling_sr"] = (grouped["total_balls"] / grouped["total_wickets"].replace(0, np.nan)).round(2)
+        grouped["dot_ball_pct"] = (grouped["total_dots"] / grouped["total_balls"].replace(0, np.nan) * 100).round(1)
+        grouped["season"] = season if season is not None else "All-Time"
+        if team is not None:
+            grouped["team"] = normalize_query_team(team) or team
+        return grouped
+
+    def query_bowling(
+        self,
+        season: Optional[int] = None,
+        sort_by: str = "total_wickets",
+        ascending: bool = False,
+        limit: int = 50,
+        team: Optional[str] = None,
+        min_overs: Optional[float] = None,
+        bowling_type: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Query player bowling stats with filtering and sorting."""
+        filtered = self._query_bowling_from_deliveries(season=season, team=team)
+        filtered["bowling_type"] = filtered["bowler"].apply(classify_bowling_type)
+
+        if min_overs is not None:
+            filtered = filtered[filtered["overs"] >= min_overs]
+
+        if bowling_type and bowling_type.lower() != "all":
+            valid_types = {"pacer": "Pacer", "spinner": "Spinner"}
+            normalized_type = valid_types.get(bowling_type.lower())
+            if normalized_type is None:
+                raise ValueError("Invalid bowling_type. Valid values are: All, Pacer, Spinner")
+            filtered = filtered[filtered["bowling_type"] == normalized_type]
             
         sort_by = validate_sort_column(sort_by, list(filtered.columns), "total_wickets")
             
@@ -447,6 +684,121 @@ class DataService:
             
         filtered = filtered.sort_values("matches_played", ascending=False)
         return clean_records(filtered)
+
+    def get_venue_details(self, venue_name: str) -> Dict[str, Any]:
+        """Calculates dynamic stats for a specific venue (most wins, toss winner win rate, top batsman)."""
+        matches_df = self._get_df("silver", "matches")
+        deliveries_df = self._get_df("silver", "deliveries")
+        
+        # Standardize venue name in lookup
+        venue_mapping = {
+            "Eden Gardens, Kolkata": "Eden Gardens",
+            "Wankhede Stadium, Mumbai": "Wankhede Stadium",
+            "M.Chinnaswamy Stadium": "M Chinnaswamy Stadium",
+            "M Chinnaswamy Stadium, Bengaluru": "M Chinnaswamy Stadium",
+            "MA Chidambaram Stadium, Chepauk, Chennai": "MA Chidambaram Stadium, Chepauk",
+            "MA Chidambaram Stadium": "MA Chidambaram Stadium, Chepauk",
+            "Rajiv Gandhi International Stadium, Uppal, Hyderabad": "Rajiv Gandhi International Stadium, Uppal",
+            "Rajiv Gandhi International Stadium": "Rajiv Gandhi International Stadium, Uppal",
+            "Sawai Mansingh Stadium, Jaipur": "Sawai Mansingh Stadium",
+            "Punjab Cricket Association IS Bindra Stadium, Mohali": "Punjab Cricket Association Stadium, Mohali",
+            "Punjab Cricket Association IS Bindra Stadium, Mohali, Chandigarh": "Punjab Cricket Association Stadium, Mohali",
+            "Punjab Cricket Association IS Bindra Stadium": "Punjab Cricket Association Stadium, Mohali",
+            "Punjab Cricket Association Stadium, Mohali": "Punjab Cricket Association Stadium, Mohali",
+            "Dr DY Patil Sports Academy, Mumbai": "Dr DY Patil Sports Academy",
+            "Brabourne Stadium, Mumbai": "Brabourne Stadium",
+            "Maharashtra Cricket Association Stadium, Pune": "Maharashtra Cricket Association Stadium",
+            "Arun Jaitley Stadium, Delhi": "Arun Jaitley Stadium",
+            "Feroz Shah Kotla": "Arun Jaitley Stadium",
+            "Dr. Y.S. Rajasekhara Reddy ACA-VDCA Cricket Stadium, Visakhapatnam": "Dr. Y.S. Rajasekhara Reddy ACA-VDCA Cricket Stadium",
+            "Maharaja Yadavindra Singh International Cricket Stadium, New Chandigarh": "Maharaja Yadavindra Singh International Cricket Stadium",
+            "Maharaja Yadavindra Singh International Cricket Stadium, Mullanpur": "Maharaja Yadavindra Singh International Cricket Stadium",
+            "Himachal Pradesh Cricket Association Stadium, Dharamsala": "Himachal Pradesh Cricket Association Stadium",
+            "Shaheed Veer Narayan Singh International Stadium, Raipur": "Shaheed Veer Narayan Singh International Stadium",
+            "Zayed Cricket Stadium, Abu Dhabi": "Sheikh Zayed Stadium"
+        }
+        
+        # Filter matches at this venue (standardizing in matches df)
+        v_matches = matches_df[matches_df["venue"].map(lambda x: venue_mapping.get(x, x)) == venue_name]
+        
+        if len(v_matches) == 0:
+            # Fallback if no exact match found
+            v_matches = matches_df[matches_df["venue"] == venue_name]
+            
+        # 1. Team with most wins
+        win_counts = v_matches["winner"].value_counts()
+        most_wins_team = "N/A"
+        most_wins_count = 0
+        if len(win_counts) > 0:
+            raw_team = win_counts.index[0]
+            most_wins_count = int(win_counts.values[0])
+            
+            # Use abbreviation
+            team_abbreviations = {
+                "Kolkata Knight Riders": "KKR",
+                "Mumbai Indians": "MI",
+                "Royal Challengers Bengaluru": "RCB",
+                "Royal Challengers Bangalore": "RCB",
+                "Chennai Super Kings": "CSK",
+                "Delhi Capitals": "DC",
+                "Delhi Daredevils": "DC",
+                "Rajasthan Royals": "RR",
+                "Punjab Kings": "PBKS",
+                "Kings XI Punjab": "PBKS",
+                "Sunrisers Hyderabad": "SRH",
+                "Deccan Chargers": "SRH",
+                "Gujarat Titans": "GT",
+                "Lucknow Super Giants": "LSG",
+                "Rising Pune Supergiant": "RPS",
+                "Rising Pune Supergiants": "RPS",
+                "Kochi Tuskers Kerala": "KTK",
+                "Pune Warriors": "PWI"
+            }
+            most_wins_team = team_abbreviations.get(raw_team, raw_team)
+            
+        # 2. Toss winner win rate
+        toss_winner_matches = v_matches[v_matches["toss_winner"] == v_matches["winner"]]
+        toss_win_pct = 0
+        if len(v_matches) > 0:
+            toss_win_pct = round((len(toss_winner_matches) / len(v_matches)) * 100)
+            
+        # 3. Top run scorer
+        v_match_ids = v_matches["match_id"].tolist()
+        v_deliveries = deliveries_df[deliveries_df["match_id"].isin(v_match_ids)]
+        runs_by_batter = v_deliveries.groupby("batter")["batter_runs"].sum().reset_index()
+        top_batter = "N/A"
+        top_runs = 0
+        if len(runs_by_batter) > 0:
+            runs_by_batter = runs_by_batter.sort_values("batter_runs", ascending=False)
+            top_batter = runs_by_batter.iloc[0]["batter"]
+            top_runs = int(runs_by_batter.iloc[0]["batter_runs"])
+            
+        # 4. Season by season average scores for visual chart!
+        gold_venue_stats = self._get_df("gold", "venue_stats")
+        venue_seasons = gold_venue_stats[gold_venue_stats["venue"] == venue_name].sort_values("season")
+        
+        chart_data = []
+        for _, row in venue_seasons.iterrows():
+            try:
+                season_val = int(row["season"])
+                chart_data.append({
+                    "season": season_val,
+                    "avg_1st_inn": float(row["avg_1st_inn_score"]),
+                    "avg_2nd_inn": float(row["avg_2nd_inn_score"]),
+                    "matches": int(row["matches_played"])
+                })
+            except:
+                continue
+                
+        return {
+            "venue": venue_name,
+            "most_wins_team": most_wins_team,
+            "most_wins_count": most_wins_count,
+            "toss_win_pct": toss_win_pct,
+            "top_batter": top_batter,
+            "top_runs": top_runs,
+            "chart_data": chart_data
+        }
 
     # ---------- Match queries --------------------
 

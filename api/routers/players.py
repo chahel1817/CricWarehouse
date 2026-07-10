@@ -30,11 +30,18 @@ def get_batting_leaderboard(
     season: Optional[int] = Query(None, description="Filter stats by a specific IPL season. If omitted, aggregates all-time career stats."),
     sort_by: str = Query("total_runs", description="Column to sort by (e.g. total_runs, strike_rate, batting_avg, fifties, hundreds)."),
     ascending: bool = Query(False, description="Sort order. True = ASC, False = DESC."),
+    team: Optional[str] = Query(None, description="Filter by batting team/franchise."),
     limit: int = Query(50, ge=1, le=200, description="Number of player records to return.")
 ):
     """Retrieve batting leaderboard statistics with custom sorting and filters."""
     try:
-        return data_service.query_batting(season=season, sort_by=sort_by, ascending=ascending, limit=limit)
+        return data_service.query_batting(
+            season=season,
+            sort_by=sort_by,
+            ascending=ascending,
+            team=team,
+            limit=limit,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -43,13 +50,24 @@ def get_batting_leaderboard(
 @router.get("/bowling", response_model=List[Dict[str, Any]])
 def get_bowling_leaderboard(
     season: Optional[int] = Query(None, description="Filter stats by a specific IPL season. If omitted, aggregates all-time career stats."),
-    sort_by: str = Query("total_wickets", description="Column to sort by (e.g. total_wickets, economy, bowling_avg, dot_ball_pct)."),
+    sort_by: str = Query("total_wickets", description="Column to sort by (e.g. total_wickets, economy, bowling_avg, dot_ball_pct, maiden_overs)."),
     ascending: bool = Query(False, description="Sort order. True = ASC, False = DESC."),
+    team: Optional[str] = Query(None, description="Filter by bowling team/franchise."),
+    min_overs: Optional[float] = Query(None, ge=0, description="Minimum overs bowled required in the leaderboard."),
+    bowling_type: Optional[str] = Query(None, description="Filter by bowling type: All, Pacer, or Spinner."),
     limit: int = Query(50, ge=1, le=200, description="Number of player records to return.")
 ):
     """Retrieve bowling leaderboard statistics with custom sorting and filters."""
     try:
-        return data_service.query_bowling(season=season, sort_by=sort_by, ascending=ascending, limit=limit)
+        return data_service.query_bowling(
+            season=season,
+            sort_by=sort_by,
+            ascending=ascending,
+            limit=limit,
+            team=team,
+            min_overs=min_overs,
+            bowling_type=bowling_type,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

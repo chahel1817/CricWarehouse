@@ -5,7 +5,7 @@ import Navbar from "@/components/Navbar";
 import StatCard from "@/components/StatCard";
 import SeasonFilter from "@/components/SeasonFilter";
 import { api } from "@/app/api-client";
-import { Sparkles, Trophy, Database, Calendar } from "lucide-react";
+import { Podium, Trophy, Database, Calendar } from "lucide-react";
 
 export default function DashboardPage() {
   const [season, setSeason] = useState("All Seasons");
@@ -186,7 +186,7 @@ export default function DashboardPage() {
           <div className="lg:col-span-4 flex flex-col">
             <div className="flex items-center justify-between border-b border-ink/10 pb-4">
               <h2 className="font-display text-lg font-black tracking-[-0.02em] uppercase flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-royal" />
+                <Podium className="w-5 h-5 text-royal" />
                 Top Performers
               </h2>
               <span className="text-[10px] font-bold text-ink/40 tracking-wider">Impact Scores</span>

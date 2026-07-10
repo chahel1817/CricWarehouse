@@ -520,6 +520,38 @@ def process_silver_to_gold():
         deliveries = spark.read.parquet(silver_deliveries)
         print(f"[silver->gold] Silver: {matches.count()} matches, {deliveries.count()} deliveries")
 
+        # Standardize venue names to deduplicate suffixes/renamings
+        venue_mapping = {
+            "Eden Gardens, Kolkata": "Eden Gardens",
+            "Wankhede Stadium, Mumbai": "Wankhede Stadium",
+            "M.Chinnaswamy Stadium": "M Chinnaswamy Stadium",
+            "M Chinnaswamy Stadium, Bengaluru": "M Chinnaswamy Stadium",
+            "MA Chidambaram Stadium, Chepauk, Chennai": "MA Chidambaram Stadium, Chepauk",
+            "MA Chidambaram Stadium": "MA Chidambaram Stadium, Chepauk",
+            "Rajiv Gandhi International Stadium, Uppal, Hyderabad": "Rajiv Gandhi International Stadium, Uppal",
+            "Rajiv Gandhi International Stadium": "Rajiv Gandhi International Stadium, Uppal",
+            "Sawai Mansingh Stadium, Jaipur": "Sawai Mansingh Stadium",
+            "Punjab Cricket Association IS Bindra Stadium, Mohali": "Punjab Cricket Association Stadium, Mohali",
+            "Punjab Cricket Association IS Bindra Stadium, Mohali, Chandigarh": "Punjab Cricket Association Stadium, Mohali",
+            "Punjab Cricket Association IS Bindra Stadium": "Punjab Cricket Association Stadium, Mohali",
+            "Punjab Cricket Association Stadium, Mohali": "Punjab Cricket Association Stadium, Mohali",
+            "Dr DY Patil Sports Academy, Mumbai": "Dr DY Patil Sports Academy",
+            "Brabourne Stadium, Mumbai": "Brabourne Stadium",
+            "Maharashtra Cricket Association Stadium, Pune": "Maharashtra Cricket Association Stadium",
+            "Arun Jaitley Stadium, Delhi": "Arun Jaitley Stadium",
+            "Feroz Shah Kotla": "Arun Jaitley Stadium",
+            "Dr. Y.S. Rajasekhara Reddy ACA-VDCA Cricket Stadium, Visakhapatnam": "Dr. Y.S. Rajasekhara Reddy ACA-VDCA Cricket Stadium",
+            "Maharaja Yadavindra Singh International Cricket Stadium, New Chandigarh": "Maharaja Yadavindra Singh International Cricket Stadium",
+            "Maharaja Yadavindra Singh International Cricket Stadium, Mullanpur": "Maharaja Yadavindra Singh International Cricket Stadium",
+            "Himachal Pradesh Cricket Association Stadium, Dharamsala": "Himachal Pradesh Cricket Association Stadium",
+            "Shaheed Veer Narayan Singh International Stadium, Raipur": "Shaheed Veer Narayan Singh International Stadium",
+            "Zayed Cricket Stadium, Abu Dhabi": "Sheikh Zayed Stadium"
+        }
+        venue_expr = col("venue")
+        for k, v in venue_mapping.items():
+            venue_expr = when(col("venue") == k, v).otherwise(venue_expr)
+        matches = matches.withColumn("venue", venue_expr)
+
         # -- Gold Table 1: Team Stats ----------------------------------------
         ts = build_team_stats(matches, deliveries)
         write_gold(ts, os.path.join(gold_dir, "team_stats"))

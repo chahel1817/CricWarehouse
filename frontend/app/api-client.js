@@ -30,22 +30,22 @@ const MOCK_DATA = {
     ]
   },
   batting: [
-    { batter: "Virat Kohli", matches: 243, innings: 243, total_runs: 8004, total_balls: 6098, strike_rate: 131.2, batting_avg: 37.2, total_fours: 680, total_sixes: 245, fifties: 52, hundreds: 8, highest_score: 113 },
-    { batter: "Shikhar Dhawan", matches: 210, innings: 209, total_runs: 6617, total_balls: 5240, strike_rate: 126.3, batting_avg: 35.1, total_fours: 720, total_sixes: 148, fifties: 48, hundreds: 2, highest_score: 106 },
-    { batter: "David Warner", matches: 176, innings: 176, total_runs: 6397, total_balls: 4572, strike_rate: 139.9, batting_avg: 41.5, total_fours: 620, total_sixes: 220, fifties: 60, hundreds: 4, highest_score: 126 },
-    { batter: "Rohit Sharma", matches: 257, innings: 252, total_runs: 6628, total_balls: 5047, strike_rate: 131.3, batting_avg: 29.5, total_fours: 560, total_sixes: 272, fifties: 42, hundreds: 2, highest_score: 109 },
-    { batter: "Suresh Raina", matches: 205, innings: 200, total_runs: 5528, total_balls: 4040, strike_rate: 136.8, batting_avg: 32.5, total_fours: 506, total_sixes: 203, fifties: 39, hundreds: 1, highest_score: 100 },
-    { batter: "AB de Villiers", matches: 184, innings: 170, total_runs: 5162, total_balls: 3400, strike_rate: 151.8, batting_avg: 39.7, total_fours: 413, total_sixes: 251, fifties: 40, hundreds: 3, highest_score: 133 },
-    { batter: "MS Dhoni", matches: 250, innings: 218, total_runs: 4746, total_balls: 3510, strike_rate: 135.2, batting_avg: 38.8, total_fours: 348, total_sixes: 252, fifties: 24, hundreds: 0, highest_score: 84 }
+    { batter: "Virat Kohli", matches: 243, innings: 243, total_runs: 8004, total_balls: 6098, strike_rate: 131.2, batting_avg: 37.2, total_fours: 680, total_sixes: 245, total_boundaries: 925, fifties: 52, hundreds: 8, highest_score: 113 },
+    { batter: "Shikhar Dhawan", matches: 210, innings: 209, total_runs: 6617, total_balls: 5240, strike_rate: 126.3, batting_avg: 35.1, total_fours: 720, total_sixes: 148, total_boundaries: 868, fifties: 48, hundreds: 2, highest_score: 106 },
+    { batter: "David Warner", matches: 176, innings: 176, total_runs: 6397, total_balls: 4572, strike_rate: 139.9, batting_avg: 41.5, total_fours: 620, total_sixes: 220, total_boundaries: 840, fifties: 60, hundreds: 4, highest_score: 126 },
+    { batter: "Rohit Sharma", matches: 257, innings: 252, total_runs: 6628, total_balls: 5047, strike_rate: 131.3, batting_avg: 29.5, total_fours: 560, total_sixes: 272, total_boundaries: 832, fifties: 42, hundreds: 2, highest_score: 109 },
+    { batter: "Suresh Raina", matches: 205, innings: 200, total_runs: 5528, total_balls: 4040, strike_rate: 136.8, batting_avg: 32.5, total_fours: 506, total_sixes: 203, total_boundaries: 709, fifties: 39, hundreds: 1, highest_score: 100 },
+    { batter: "AB de Villiers", matches: 184, innings: 170, total_runs: 5162, total_balls: 3400, strike_rate: 151.8, batting_avg: 39.7, total_fours: 413, total_sixes: 251, total_boundaries: 664, fifties: 40, hundreds: 3, highest_score: 133 },
+    { batter: "MS Dhoni", matches: 250, innings: 218, total_runs: 4746, total_balls: 3510, strike_rate: 135.2, batting_avg: 38.8, total_fours: 348, total_sixes: 252, total_boundaries: 600, fifties: 24, hundreds: 0, highest_score: 84 }
   ],
   bowling: [
-    { bowler: "Yuzvendra Chahal", matches: 145, total_balls: 3200, total_runs_conceded: 4050, total_wickets: 205, economy: 7.6, bowling_avg: 19.7, bowling_sr: 15.6, dot_ball_pct: 38.5, four_wkt_hauls: 5, five_wkt_hauls: 1 },
-    { bowler: "Dwayne Bravo", matches: 161, total_balls: 3100, total_runs_conceded: 4300, total_wickets: 183, economy: 8.32, bowling_avg: 23.5, bowling_sr: 16.9, dot_ball_pct: 34.2, four_wkt_hauls: 2, five_wkt_hauls: 0 },
-    { bowler: "Piyush Chawla", matches: 181, total_balls: 3700, total_runs_conceded: 4800, total_wickets: 179, economy: 7.78, bowling_avg: 26.8, bowling_sr: 20.6, dot_ball_pct: 36.8, four_wkt_hauls: 2, five_wkt_hauls: 0 },
-    { bowler: "Amit Mishra", matches: 161, total_balls: 3200, total_runs_conceded: 3900, total_wickets: 173, economy: 7.31, bowling_avg: 22.5, bowling_sr: 18.5, dot_ball_pct: 40.2, four_wkt_hauls: 4, five_wkt_hauls: 1 },
-    { bowler: "Ravichandran Ashwin", matches: 197, total_balls: 4100, total_runs_conceded: 4700, total_wickets: 171, economy: 6.87, bowling_avg: 27.4, bowling_sr: 23.9, dot_ball_pct: 41.5, four_wkt_hauls: 1, five_wkt_hauls: 0 },
-    { bowler: "Lasith Malinga", matches: 122, total_balls: 2827, total_runs_conceded: 3320, total_wickets: 170, economy: 7.04, bowling_avg: 19.5, bowling_sr: 16.6, dot_ball_pct: 42.1, four_wkt_hauls: 4, five_wkt_hauls: 1 },
-    { bowler: "Jasprit Bumrah", matches: 133, total_balls: 3000, total_runs_conceded: 3400, total_wickets: 158, economy: 6.8, bowling_avg: 21.5, bowling_sr: 18.9, dot_ball_pct: 44.5, four_wkt_hauls: 3, five_wkt_hauls: 1 }
+    { bowler: "Yuzvendra Chahal", matches: 145, total_balls: 3200, overs: 533.3, total_runs_conceded: 4050, total_wickets: 205, economy: 7.6, bowling_avg: 19.7, bowling_sr: 15.6, dot_ball_pct: 38.5, maiden_overs: 4, bowling_type: "Spinner", four_wkt_hauls: 5, five_wkt_hauls: 1 },
+    { bowler: "Dwayne Bravo", matches: 161, total_balls: 3100, overs: 516.7, total_runs_conceded: 4300, total_wickets: 183, economy: 8.32, bowling_avg: 23.5, bowling_sr: 16.9, dot_ball_pct: 34.2, maiden_overs: 3, bowling_type: "Pacer", four_wkt_hauls: 2, five_wkt_hauls: 0 },
+    { bowler: "Piyush Chawla", matches: 181, total_balls: 3700, overs: 616.7, total_runs_conceded: 4800, total_wickets: 179, economy: 7.78, bowling_avg: 26.8, bowling_sr: 20.6, dot_ball_pct: 36.8, maiden_overs: 5, bowling_type: "Spinner", four_wkt_hauls: 2, five_wkt_hauls: 0 },
+    { bowler: "Amit Mishra", matches: 161, total_balls: 3200, overs: 533.3, total_runs_conceded: 3900, total_wickets: 173, economy: 7.31, bowling_avg: 22.5, bowling_sr: 18.5, dot_ball_pct: 40.2, maiden_overs: 6, bowling_type: "Spinner", four_wkt_hauls: 4, five_wkt_hauls: 1 },
+    { bowler: "Ravichandran Ashwin", matches: 197, total_balls: 4100, overs: 683.3, total_runs_conceded: 4700, total_wickets: 171, economy: 6.87, bowling_avg: 27.4, bowling_sr: 23.9, dot_ball_pct: 41.5, maiden_overs: 8, bowling_type: "Spinner", four_wkt_hauls: 1, five_wkt_hauls: 0 },
+    { bowler: "Lasith Malinga", matches: 122, total_balls: 2827, overs: 471.2, total_runs_conceded: 3320, total_wickets: 170, economy: 7.04, bowling_avg: 19.5, bowling_sr: 16.6, dot_ball_pct: 42.1, maiden_overs: 7, bowling_type: "Pacer", four_wkt_hauls: 4, five_wkt_hauls: 1 },
+    { bowler: "Jasprit Bumrah", matches: 133, total_balls: 3000, overs: 500.0, total_runs_conceded: 3400, total_wickets: 158, economy: 6.8, bowling_avg: 21.5, bowling_sr: 18.9, dot_ball_pct: 44.5, maiden_overs: 9, bowling_type: "Pacer", four_wkt_hauls: 3, five_wkt_hauls: 1 }
   ],
   venues: [
     { venue: "Wankhede Stadium", matches_played: 115, avg_1st_inn_score: 168.5, avg_2nd_inn_score: 159.2, bat_first_wins: 52, chase_wins: 63, highest_total: 235, lowest_total: 67, avg_sixes_per_innings: 8.5, avg_fours_per_innings: 16.2 },
@@ -136,6 +136,7 @@ export const api = {
   getBowlingLeaderboard: (params) => fetchFromApi("/players/bowling", params),
   getTopPerformers: (params) => fetchFromApi("/players/top-performers", params),
   getVenueStats: (params) => fetchFromApi("/venues/stats", params),
+  getVenueDetails: (params) => fetchFromApi("/venues/details", params),
   getTeams: () => fetchFromApi("/teams"),
   getTeamSummary: (team) => fetchFromApi(`/teams/${encodeURIComponent(team)}/summary`),
   getTeamHistory: (team) => fetchFromApi(`/teams/${encodeURIComponent(team)}/history`),

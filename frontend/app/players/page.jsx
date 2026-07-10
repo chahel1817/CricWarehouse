@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import SeasonFilter from "@/components/SeasonFilter";
+import CustomDropdown from "@/components/CustomDropdown";
 import { api } from "@/app/api-client";
 import { 
   Search, 
@@ -21,6 +22,30 @@ import {
   Award
 } from "lucide-react";
 
+const BATTING_SORT_OPTIONS = [
+  { value: "total_runs_desc", label: "Runs: Highest first" },
+  { value: "total_runs_asc", label: "Runs: Lowest first" },
+  { value: "total_boundaries_desc", label: "Boundaries: Most first" },
+  { value: "total_fours_desc", label: "Fours: Most first" },
+  { value: "total_sixes_desc", label: "Sixes: Most first" },
+  { value: "batting_avg_desc", label: "Average: Highest first" },
+  { value: "batting_avg_asc", label: "Average: Lowest first" },
+  { value: "strike_rate_desc", label: "Strike Rate: Highest first" },
+  { value: "strike_rate_asc", label: "Strike Rate: Lowest first" },
+  { value: "highest_score_desc", label: "Highest Score first" },
+];
+
+const BOWLING_SORT_OPTIONS = [
+  { value: "total_wickets_desc", label: "Wickets: Most first" },
+  { value: "total_wickets_asc", label: "Wickets: Least first" },
+  { value: "economy_asc", label: "Economy: Best first" },
+  { value: "economy_desc", label: "Economy: Worst first" },
+  { value: "bowling_avg_asc", label: "Bowling Avg: Best first" },
+  { value: "maiden_overs_desc", label: "Maiden Overs: Most first" },
+  { value: "five_wkt_hauls_desc", label: "5-Wicket Hauls first" },
+  { value: "dot_ball_pct_desc", label: "Dot Ball %: Most first" },
+];
+
 export default function PlayersPage() {
   const [season, setSeason] = useState("All Seasons");
   const [activeTab, setActiveTab] = useState("batting"); // "batting" or "bowling"
@@ -28,9 +53,31 @@ export default function PlayersPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [sortCriteria, setSortCriteria] = useState("total_runs_desc");
+  const [teams, setTeams] = useState([]);
+  const [teamFilter, setTeamFilter] = useState("All Teams");
   const [selectedPlayer, setSelectedPlayer] = useState(null);
+
+  const teamOptions = [
+    { value: "All Teams", label: "All Teams" },
+    ...teams.map((team) => ({ value: team, label: team }))
+  ];
+
+  const sortOptions = activeTab === "batting" ? BATTING_SORT_OPTIONS : BOWLING_SORT_OPTIONS;
   const [playerProfile, setPlayerProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
+
+  useEffect(() => {
+    async function loadMetadata() {
+      try {
+        const metadata = await api.getMetadata();
+        setTeams(metadata?.teams || []);
+      } catch (err) {
+        console.error("Error loading player filters:", err);
+      }
+    }
+
+    loadMetadata();
+  }, []);
 
   // When tab changes, reset sorting criteria & clear profile selection
   useEffect(() => {
@@ -67,6 +114,12 @@ export default function PlayersPage() {
           else if (sortCriteria === "matches_asc") { apiSortBy = "matches"; apiAscending = true; }
           else if (sortCriteria === "innings_desc") { apiSortBy = "innings"; apiAscending = false; }
           else if (sortCriteria === "innings_asc") { apiSortBy = "innings"; apiAscending = true; }
+          else if (sortCriteria === "total_boundaries_desc") { apiSortBy = "total_boundaries"; apiAscending = false; }
+          else if (sortCriteria === "total_boundaries_asc") { apiSortBy = "total_boundaries"; apiAscending = true; }
+          else if (sortCriteria === "total_fours_desc") { apiSortBy = "total_fours"; apiAscending = false; }
+          else if (sortCriteria === "total_fours_asc") { apiSortBy = "total_fours"; apiAscending = true; }
+          else if (sortCriteria === "total_sixes_desc") { apiSortBy = "total_sixes"; apiAscending = false; }
+          else if (sortCriteria === "total_sixes_asc") { apiSortBy = "total_sixes"; apiAscending = true; }
         } else {
           if (sortCriteria === "total_wickets_desc") { apiSortBy = "total_wickets"; apiAscending = false; }
           else if (sortCriteria === "total_wickets_asc") { apiSortBy = "total_wickets"; apiAscending = true; }
@@ -82,6 +135,10 @@ export default function PlayersPage() {
           else if (sortCriteria === "matches_asc") { apiSortBy = "matches"; apiAscending = true; }
           else if (sortCriteria === "total_balls_desc") { apiSortBy = "total_balls"; apiAscending = false; }
           else if (sortCriteria === "total_balls_asc") { apiSortBy = "total_balls"; apiAscending = true; }
+          else if (sortCriteria === "overs_desc") { apiSortBy = "overs"; apiAscending = false; }
+          else if (sortCriteria === "overs_asc") { apiSortBy = "overs"; apiAscending = true; }
+          else if (sortCriteria === "maiden_overs_desc") { apiSortBy = "maiden_overs"; apiAscending = false; }
+          else if (sortCriteria === "maiden_overs_asc") { apiSortBy = "maiden_overs"; apiAscending = true; }
         }
 
         if (activeTab === "batting") {
@@ -89,6 +146,7 @@ export default function PlayersPage() {
             season: seasonParam,
             sort_by: apiSortBy,
             ascending: apiAscending,
+            team: teamFilter === "All Teams" ? null : teamFilter,
             limit: 100
           });
         } else {
@@ -96,6 +154,7 @@ export default function PlayersPage() {
             season: seasonParam,
             sort_by: apiSortBy,
             ascending: apiAscending,
+            team: teamFilter === "All Teams" ? null : teamFilter,
             limit: 100
           });
         }
@@ -109,7 +168,7 @@ export default function PlayersPage() {
     }
 
     loadPlayersData();
-  }, [season, activeTab, sortCriteria]);
+  }, [season, activeTab, sortCriteria, teamFilter]);
 
   // Load selected player career details when clicked
   useEffect(() => {
@@ -166,76 +225,63 @@ export default function PlayersPage() {
         {/* Thin Divider */}
         <div className="h-px w-full bg-ink/10 my-8" />
 
-        {/* Search, Tabs & Custom sorting dropdown Controls */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-ink/10 pb-5">
-          {/* Tab buttons */}
-          <div className="flex gap-2">
+        {/* Compact Leaderboard Controls */}
+        <div className="border-b border-ink/10 pb-5">
+          <div className="grid gap-3 xl:grid-cols-[410px_1fr] xl:items-start">
+            {/* Tab buttons */}
+            <div className="grid grid-cols-2 gap-2 sm:max-w-md">
             <button
               onClick={() => setActiveTab("batting")}
-              className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition ${
+              className={`min-h-14 rounded-2xl px-5 text-center text-xs font-black uppercase tracking-[0.12em] transition ${
                 activeTab === "batting"
-                  ? "bg-ink text-white shadow-md"
-                  : "bg-ink/5 text-ink/50 hover:bg-ink/10"
+                  ? "bg-ink text-white shadow-sm"
+                  : "bg-ink/5 text-ink/45 hover:bg-ink/10"
               }`}
             >
               Batting Leaderboard
             </button>
             <button
               onClick={() => setActiveTab("bowling")}
-              className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition ${
+              className={`min-h-14 rounded-2xl px-5 text-center text-xs font-black uppercase tracking-[0.12em] transition ${
                 activeTab === "bowling"
-                  ? "bg-ink text-white shadow-md"
-                  : "bg-ink/5 text-ink/50 hover:bg-ink/10"
+                  ? "bg-ink text-white shadow-sm"
+                  : "bg-ink/5 text-ink/45 hover:bg-ink/10"
               }`}
             >
               Bowling Leaderboard
             </button>
-          </div>
+            </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center w-full md:w-auto">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {/* Search bar */}
-            <div className="relative w-full sm:w-64">
+              <div className="relative sm:col-span-2">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/35" />
               <input
                 type="text"
                 placeholder="Search player name..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-11 pr-5 py-2.5 rounded-xl border border-ink/15 text-xs font-semibold bg-white/40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ink/20 shadow-sm"
+                  className="h-12 w-full rounded-2xl border border-ink/10 bg-white/55 pl-11 pr-5 text-sm font-semibold text-ink/75 shadow-sm outline-none transition placeholder:text-ink/35 focus:bg-white focus:ring-1 focus:ring-ink/20"
               />
             </div>
 
-            {/* Premium Sort dropdown */}
-            <div className="relative w-full sm:w-56">
-              <ArrowUpDown className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/35" />
-              <select
+              {/* Sort dropdown */}
+              <CustomDropdown
                 value={sortCriteria}
-                onChange={(e) => setSortCriteria(e.target.value)}
-                className="w-full pl-11 pr-10 py-2.5 rounded-xl border border-ink/15 text-xs font-semibold bg-white/40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ink/20 shadow-sm appearance-none cursor-pointer text-ink/75"
-              >
-                {activeTab === "batting" ? (
-                  <>
-                    <option value="total_runs_desc">Runs: Highest first</option>
-                    <option value="total_runs_asc">Runs: Lowest first</option>
-                    <option value="batting_avg_desc">Average: Highest first</option>
-                    <option value="batting_avg_asc">Average: Lowest first</option>
-                    <option value="strike_rate_desc">Strike Rate: Highest first</option>
-                    <option value="strike_rate_asc">Strike Rate: Lowest first</option>
-                    <option value="highest_score_desc">Highest Score first</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="total_wickets_desc">Wickets: Most first</option>
-                    <option value="total_wickets_asc">Wickets: Least first</option>
-                    <option value="economy_asc">Economy: Best first</option>
-                    <option value="economy_desc">Economy: Worst first</option>
-                    <option value="bowling_avg_asc">Bowling Avg: Best first</option>
-                    <option value="five_wkt_hauls_desc">5-Wicket Hauls first</option>
-                    <option value="dot_ball_pct_desc">Dot Ball %: Most first</option>
-                  </>
-                )}
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/35 pointer-events-none" />
+                onChange={setSortCriteria}
+                options={sortOptions}
+                icon={ArrowUpDown}
+              />
+
+              {/* Team dropdown */}
+              <CustomDropdown
+                value={teamFilter}
+                onChange={setTeamFilter}
+                options={teamOptions}
+                icon={ShieldAlert}
+              />
+
+
             </div>
           </div>
         </div>
@@ -252,6 +298,9 @@ export default function PlayersPage() {
                     <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "matches_desc" ? "matches_asc" : "matches_desc")}>M</th>
                     <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "innings_desc" ? "innings_asc" : "innings_desc")}>Inn</th>
                     <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "total_runs_desc" ? "total_runs_asc" : "total_runs_desc")}>Runs</th>
+                    <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "total_boundaries_desc" ? "total_boundaries_asc" : "total_boundaries_desc")}>Bnd</th>
+                    <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "total_fours_desc" ? "total_fours_asc" : "total_fours_desc")}>4s</th>
+                    <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "total_sixes_desc" ? "total_sixes_asc" : "total_sixes_desc")}>6s</th>
                     <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "strike_rate_desc" ? "strike_rate_asc" : "strike_rate_desc")}>SR</th>
                     <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "batting_avg_desc" ? "batting_avg_asc" : "batting_avg_desc")}>Avg</th>
                     <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "highest_score_desc" ? "highest_score_asc" : "highest_score_desc")}>HS</th>
@@ -262,7 +311,7 @@ export default function PlayersPage() {
                   {loading ? (
                     Array.from({ length: 10 }).map((_, i) => (
                       <tr key={i} className="border-b border-ink/5 animate-pulse">
-                        <td className="p-4" colSpan={8}>
+                        <td className="p-4" colSpan={11}>
                           <div className="h-4 bg-ink/5 rounded w-full" />
                         </td>
                       </tr>
@@ -280,6 +329,9 @@ export default function PlayersPage() {
                         <td className="p-3.5 text-ink/70">{player.matches}</td>
                         <td className="p-3.5 text-ink/70">{player.innings}</td>
                         <td className="p-3.5 text-ink font-black">{player.total_runs}</td>
+                        <td className="p-3.5 text-boundary font-black">{player.total_boundaries ?? (player.total_fours + player.total_sixes)}</td>
+                        <td className="p-3.5 text-ink/70 font-bold">{player.total_fours}</td>
+                        <td className="p-3.5 text-ink/70 font-bold">{player.total_sixes}</td>
                         <td className="p-3.5 text-royal font-bold">{player.strike_rate}</td>
                         <td className="p-3.5 text-ink/80 font-medium">{player.batting_avg || "0.0"}</td>
                         <td className="p-3.5 text-ink/70">{player.highest_score}</td>
@@ -290,7 +342,7 @@ export default function PlayersPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={8} className="p-8 text-center text-ink/40 font-bold">
+                      <td colSpan={11} className="p-8 text-center text-ink/40 font-bold">
                         No batters matching your filters.
                       </td>
                     </tr>
@@ -303,10 +355,12 @@ export default function PlayersPage() {
                   <tr className="border-b border-ink/10 bg-ink/5 font-black uppercase tracking-wider text-ink/75">
                     <th className="p-3.5">Player</th>
                     <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "matches_desc" ? "matches_asc" : "matches_desc")}>M</th>
-                    <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "total_balls_desc" ? "total_balls_asc" : "total_balls_desc")}>Balls</th>
+                    <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "overs_desc" ? "overs_asc" : "overs_desc")}>Overs</th>
+                    <th className="p-3.5">Type</th>
                     <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "total_wickets_desc" ? "total_wickets_asc" : "total_wickets_desc")}>Wickets</th>
                     <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "economy_asc" ? "economy_desc" : "economy_asc")}>Econ</th>
                     <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "bowling_avg_asc" ? "bowling_avg_desc" : "bowling_avg_asc")}>Avg</th>
+                    <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "maiden_overs_desc" ? "maiden_overs_asc" : "maiden_overs_desc")}>Mdns</th>
                     <th className="p-3.5 cursor-pointer hover:text-boundary transition" onClick={() => setSortCriteria(sortCriteria === "dot_ball_pct_desc" ? "dot_ball_pct_asc" : "dot_ball_pct_desc")}>Dot %</th>
                     <th className="p-3.5 text-right font-black">5w/4w</th>
                   </tr>
@@ -315,7 +369,7 @@ export default function PlayersPage() {
                   {loading ? (
                     Array.from({ length: 10 }).map((_, i) => (
                       <tr key={i} className="border-b border-ink/5 animate-pulse">
-                        <td className="p-4" colSpan={8}>
+                        <td className="p-4" colSpan={10}>
                           <div className="h-4 bg-ink/5 rounded w-full" />
                         </td>
                       </tr>
@@ -331,10 +385,12 @@ export default function PlayersPage() {
                       >
                         <td className="p-3.5 font-bold text-ink">{player.bowler}</td>
                         <td className="p-3.5 text-ink/70">{player.matches}</td>
-                        <td className="p-3.5 text-ink/70">{player.total_balls}</td>
+                        <td className="p-3.5 text-ink/70">{player.overs}</td>
+                        <td className="p-3.5 text-ink/55 font-bold">{player.bowling_type || "Unknown"}</td>
                         <td className="p-3.5 text-ink font-black">{player.total_wickets}</td>
                         <td className="p-3.5 text-royal font-bold">{player.economy}</td>
                         <td className="p-3.5 text-ink/80 font-medium">{player.bowling_avg || "0.0"}</td>
+                        <td className="p-3.5 text-boundary font-black">{player.maiden_overs || 0}</td>
                         <td className="p-3.5 text-ink/70">{player.dot_ball_pct}%</td>
                         <td className="p-3.5 text-right font-semibold text-boundary">
                           {player.five_wkt_hauls}/{player.four_wkt_hauls}
@@ -343,7 +399,7 @@ export default function PlayersPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={8} className="p-8 text-center text-ink/40 font-bold">
+                      <td colSpan={10} className="p-8 text-center text-ink/40 font-bold">
                         No bowlers matching your filters.
                       </td>
                     </tr>
