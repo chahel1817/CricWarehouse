@@ -549,6 +549,311 @@ class DataService:
         top_n = filtered.head(limit)
         return clean_records(top_n)
 
+    def _classify_player_role(self, player_name: str, bat_summary: Dict, bowl_summary: Dict) -> str:
+        """Classify player role based on career stats ratios."""
+        has_bat = bool(bat_summary and bat_summary.get("matches", 0) > 0)
+        has_bowl = bool(bowl_summary and bowl_summary.get("matches", 0) > 0)
+
+        if not has_bat and not has_bowl:
+            return "UNKNOWN"
+        if not has_bowl:
+            return "BATSMAN"
+        if not has_bat:
+            return "BOWLER"
+
+        bat_matches = bat_summary.get("matches", 0)
+        bowl_matches = bowl_summary.get("matches", 0)
+        total_runs = bat_summary.get("total_runs", 0)
+        total_wickets = bowl_summary.get("total_wickets", 0)
+        batting_avg = bat_summary.get("batting_avg", 0)
+        innings = bat_summary.get("innings", 0)
+
+        # Known wicketkeepers
+        wk_names = {"MS Dhoni", "KD Karthik", "Q de Kock", "RR Pant", "KL Rahul",
+                     "W Saha", "PP Shaw", "RV Uthappa", "N Rana", "SV Samson",
+                     "JC Buttler", "AB de Villiers", "KS Bharat", "Ishan Kishan"}
+        if player_name in wk_names:
+            return "WK-BATSMAN"
+
+        # Pure bowler: high bowling matches, low batting contribution
+        if bowl_matches > bat_matches * 0.8 and total_runs < 500 and total_wickets > 30:
+            return "BOWLER"
+
+        # Pure batsman: very few wickets
+        if total_wickets < 10 and total_runs > 500:
+            return "BATSMAN"
+
+        # All-rounder: significant contributions in both
+        if total_runs > 1000 and total_wickets > 30:
+            return "ALL-ROUNDER"
+        if batting_avg > 20 and total_wickets > 20 and innings > 30:
+            return "ALL-ROUNDER"
+
+        # Bowling all-rounder (bowls primarily, but bats a bit)
+        if total_wickets > total_runs / 20:
+            return "BOWLER"
+
+        return "BATSMAN"
+
+    def _get_player_current_team(self, player_name: str) -> Optional[str]:
+        """Find the most recent team a player played for."""
+        deliveries = self.get_deliveries()
+        matches = self.get_matches()
+
+        # Find matches where player batted or bowled
+        player_match_ids = set()
+        bat_matches = deliveries[deliveries["batter"] == player_name]["match_id"].unique()
+        bowl_matches = deliveries[deliveries["bowler"] == player_name]["match_id"].unique()
+        player_match_ids = set(bat_matches) | set(bowl_matches)
+
+        if not player_match_ids:
+            return None
+
+        player_matches = matches[matches["match_id"].isin(player_match_ids)].sort_values("date", ascending=False)
+        if player_matches.empty:
+            return None
+
+        latest_match = player_matches.iloc[0]
+        latest_match_id = latest_match["match_id"]
+
+        # Check which team the player was on in that match
+        latest_deliveries = deliveries[deliveries["match_id"] == latest_match_id]
+        bat_team = latest_deliveries[latest_deliveries["batter"] == player_name]["batting_team"].values
+        if len(bat_team) > 0:
+            return str(bat_team[0])
+
+        # Derive bowling team (opposite of batting_team)
+        bowl_rows = latest_deliveries[latest_deliveries["bowler"] == player_name]
+        if not bowl_rows.empty:
+            batting_team_when_bowling = bowl_rows.iloc[0]["batting_team"]
+            t1, t2 = str(latest_match["team1"]), str(latest_match["team2"])
+            return t2 if str(batting_team_when_bowling) == t1 else t1
+
+        return None
+
+    def _get_career_bests(self, player_name: str) -> Dict[str, Any]:
+        """Get best batting and bowling performances with opponent info."""
+        deliveries = self.get_deliveries()
+        matches = self.get_matches()
+
+        result = {}
+
+        # Best batting score
+        bat_deliveries = deliveries[deliveries["batter"] == player_name].copy()
+        if not bat_deliveries.empty:
+            non_wide = bat_deliveries[bat_deliveries["is_wide"] == False]
+            match_runs = non_wide.groupby(["match_id", "season"]).agg(
+                runs=("batter_runs", "sum")
+            ).reset_index()
+            if not match_runs.empty:
+                best_idx = match_runs["runs"].idxmax()
+                best_row = match_runs.loc[best_idx]
+                best_match_id = best_row["match_id"]
+                # Find opponent
+                match_info = matches[matches["match_id"] == best_match_id]
+                if not match_info.empty:
+                    m = match_info.iloc[0]
+                    batting_team = bat_deliveries[bat_deliveries["match_id"] == best_match_id]["batting_team"].iloc[0]
+                    opponent = m["team2"] if str(batting_team) == str(m["team1"]) else m["team1"]
+                    result["best_batting"] = {
+                        "runs": int(best_row["runs"]),
+                        "vs": self._team_abbreviation(str(opponent)),
+                        "season": int(best_row["season"])
+                    }
+
+        # Best bowling figures
+        bowl_deliveries = deliveries[deliveries["bowler"] == player_name].copy()
+        if not bowl_deliveries.empty:
+            excluded = {"run out", "retired hurt", "retired out", "obstructing the field"}
+            bowl_deliveries["credited_wicket"] = (
+                bowl_deliveries["is_wicket"].astype(bool) &
+                ~bowl_deliveries["dismissal_kind"].isin(excluded)
+            )
+            bowl_deliveries["bowler_runs"] = (
+                bowl_deliveries["total_runs"] - bowl_deliveries["legbyes"] - bowl_deliveries["byes"]
+            )
+            match_bowling = bowl_deliveries.groupby(["match_id", "season"]).agg(
+                wickets=("credited_wicket", "sum"),
+                runs_conceded=("bowler_runs", "sum"),
+            ).reset_index()
+            if not match_bowling.empty and match_bowling["wickets"].max() > 0:
+                # Best by wickets, then by fewest runs
+                match_bowling = match_bowling.sort_values(
+                    ["wickets", "runs_conceded"], ascending=[False, True]
+                )
+                best_row = match_bowling.iloc[0]
+                best_match_id = best_row["match_id"]
+                match_info = matches[matches["match_id"] == best_match_id]
+                if not match_info.empty:
+                    m = match_info.iloc[0]
+                    bowling_bat_team = bowl_deliveries[bowl_deliveries["match_id"] == best_match_id]["batting_team"].iloc[0]
+                    opponent = str(bowling_bat_team)
+                    result["best_bowling"] = {
+                        "wickets": int(best_row["wickets"]),
+                        "runs": int(best_row["runs_conceded"]),
+                        "vs": self._team_abbreviation(opponent),
+                        "season": int(best_row["season"])
+                    }
+
+        return result
+
+    def _get_win_contribution(self, player_name: str, role: str) -> Optional[Dict[str, Any]]:
+        """Calculate win contribution: % of matches won when player performed well."""
+        deliveries = self.get_deliveries()
+        matches = self.get_matches()
+
+        if role in ("BOWLER", "ALL-ROUNDER"):
+            # Wicket-based: matches where player took 2+ wickets
+            excluded = {"run out", "retired hurt", "retired out", "obstructing the field"}
+            bowl_del = deliveries[deliveries["bowler"] == player_name].copy()
+            if bowl_del.empty:
+                return None
+            bowl_del["credited_wicket"] = (
+                bowl_del["is_wicket"].astype(bool) &
+                ~bowl_del["dismissal_kind"].isin(excluded)
+            )
+            match_wickets = bowl_del.groupby("match_id")["credited_wicket"].sum().reset_index()
+            threshold_matches = match_wickets[match_wickets["credited_wicket"] >= 2]["match_id"].values
+            if len(threshold_matches) == 0:
+                return None
+
+            # Find which team player was on
+            threshold_match_data = matches[matches["match_id"].isin(threshold_matches)]
+            wins = 0
+            total = len(threshold_match_data)
+            for _, m in threshold_match_data.iterrows():
+                # Determine player's team
+                bat_team_rows = bowl_del[bowl_del["match_id"] == m["match_id"]]["batting_team"]
+                if bat_team_rows.empty:
+                    continue
+                opponent = str(bat_team_rows.iloc[0])
+                player_team = m["team2"] if opponent == str(m["team1"]) else m["team1"]
+                if str(m["winner"]) == str(player_team):
+                    wins += 1
+
+            if total == 0:
+                return None
+            return {
+                "stat": f"Team won {round(wins / total * 100)}% of matches where {player_name} took 2+ wickets",
+                "wins": wins,
+                "total": total,
+                "pct": round(wins / total * 100)
+            }
+        else:
+            # Batting-based: matches where player scored 30+
+            bat_del = deliveries[deliveries["batter"] == player_name].copy()
+            if bat_del.empty:
+                return None
+            non_wide = bat_del[bat_del["is_wide"] == False]
+            match_runs = non_wide.groupby("match_id")["batter_runs"].sum().reset_index()
+            threshold_matches = match_runs[match_runs["batter_runs"] >= 30]["match_id"].values
+            if len(threshold_matches) == 0:
+                return None
+
+            threshold_match_data = matches[matches["match_id"].isin(threshold_matches)]
+            wins = 0
+            total = len(threshold_match_data)
+            for _, m in threshold_match_data.iterrows():
+                bat_team_rows = bat_del[bat_del["match_id"] == m["match_id"]]["batting_team"]
+                if bat_team_rows.empty:
+                    continue
+                player_team = str(bat_team_rows.iloc[0])
+                if str(m["winner"]) == player_team:
+                    wins += 1
+
+            if total == 0:
+                return None
+            return {
+                "stat": f"Team won {round(wins / total * 100)}% of matches where {player_name} scored 30+",
+                "wins": wins,
+                "total": total,
+                "pct": round(wins / total * 100)
+            }
+
+    def _get_head_to_head_vs_teams(self, player_name: str, role: str) -> List[Dict[str, Any]]:
+        """Get wickets or runs per opponent team."""
+        deliveries = self.get_deliveries()
+
+        if role in ("BOWLER", "ALL-ROUNDER"):
+            bowl_del = deliveries[deliveries["bowler"] == player_name].copy()
+            if bowl_del.empty:
+                return []
+            excluded = {"run out", "retired hurt", "retired out", "obstructing the field"}
+            bowl_del["credited_wicket"] = (
+                bowl_del["is_wicket"].astype(bool) &
+                ~bowl_del["dismissal_kind"].isin(excluded)
+            )
+            team_stats = bowl_del.groupby("batting_team").agg(
+                wickets=("credited_wicket", "sum"),
+                matches=("match_id", "nunique"),
+            ).reset_index()
+            team_stats = team_stats.sort_values("wickets", ascending=False)
+            return [
+                {
+                    "team": self._team_abbreviation(str(row["batting_team"])),
+                    "team_full": str(row["batting_team"]),
+                    "value": int(row["wickets"]),
+                    "label": "wickets",
+                    "matches": int(row["matches"]),
+                }
+                for _, row in team_stats.iterrows()
+                if int(row["wickets"]) > 0
+            ]
+        else:
+            bat_del = deliveries[deliveries["batter"] == player_name].copy()
+            if bat_del.empty:
+                return []
+            # Need to find bowling team (opponent)
+            matches_df = self.get_matches()[["match_id", "team1", "team2"]].drop_duplicates("match_id")
+            bat_del = bat_del.merge(matches_df, on="match_id", how="left")
+            bat_del["bowling_team"] = np.where(
+                bat_del["batting_team"] == bat_del["team1"],
+                bat_del["team2"],
+                bat_del["team1"]
+            )
+            non_wide = bat_del[bat_del["is_wide"] == False]
+            team_stats = non_wide.groupby("bowling_team").agg(
+                runs=("batter_runs", "sum"),
+                matches=("match_id", "nunique"),
+            ).reset_index()
+            team_stats = team_stats.sort_values("runs", ascending=False)
+            return [
+                {
+                    "team": self._team_abbreviation(str(row["bowling_team"])),
+                    "team_full": str(row["bowling_team"]),
+                    "value": int(row["runs"]),
+                    "label": "runs",
+                    "matches": int(row["matches"]),
+                }
+                for _, row in team_stats.iterrows()
+                if int(row["runs"]) > 0
+            ]
+
+    def _team_abbreviation(self, team_name: str) -> str:
+        """Convert full team name to abbreviation."""
+        abbrevs = {
+            "Chennai Super Kings": "CSK",
+            "Mumbai Indians": "MI",
+            "Royal Challengers Bengaluru": "RCB",
+            "Royal Challengers Bangalore": "RCB",
+            "Kolkata Knight Riders": "KKR",
+            "Delhi Capitals": "DC",
+            "Delhi Daredevils": "DC",
+            "Rajasthan Royals": "RR",
+            "Punjab Kings": "PBKS",
+            "Kings XI Punjab": "PBKS",
+            "Sunrisers Hyderabad": "SRH",
+            "Deccan Chargers": "DC*",
+            "Gujarat Titans": "GT",
+            "Lucknow Super Giants": "LSG",
+            "Rising Pune Supergiant": "RPS",
+            "Rising Pune Supergiants": "RPS",
+            "Pune Warriors": "PWI",
+            "Kochi Tuskers Kerala": "KTK",
+            "Gujarat Lions": "GL",
+        }
+        return abbrevs.get(team_name, team_name[:3].upper())
+
     def get_player_history(self, player_name: str) -> Dict[str, Any]:
         """Gets career seasonal breakdown (batting & bowling) and career totals."""
         bat_df = self.get_player_batting()
@@ -618,9 +923,47 @@ class DataService:
             "total_pom_awards": int(p_pom["pom_awards"].sum()) if not p_pom.empty else 0,
             "max_impact_score": float(p_pom["impact_score"].max()) if not p_pom.empty else 0.0
         }
+
+        # --- Enhanced profile data ---
+        
+        # Role classification
+        role = self._classify_player_role(real_name, bat_summary, bowl_summary)
+
+        # Current team
+        current_team = self._get_player_current_team(real_name)
+        current_team_abbr = self._team_abbreviation(current_team) if current_team else None
+
+        # Seasons active
+        all_seasons = set()
+        if not p_bat.empty:
+            all_seasons.update(int(s) for s in p_bat["season"].unique())
+        if not p_bowl.empty:
+            all_seasons.update(int(s) for s in p_bowl["season"].unique())
+        seasons_list = sorted(all_seasons)
+        first_season = seasons_list[0] if seasons_list else None
+        last_season = seasons_list[-1] if seasons_list else None
+        total_seasons = len(seasons_list)
+
+        # Career best performances
+        career_bests = self._get_career_bests(real_name)
+
+        # Win contribution
+        win_contribution = self._get_win_contribution(real_name, role)
+
+        # Head-to-head vs teams
+        head_to_head = self._get_head_to_head_vs_teams(real_name, role)
             
         return {
             "player": real_name,
+            "role": role,
+            "current_team": current_team,
+            "current_team_abbr": current_team_abbr,
+            "first_season": first_season,
+            "last_season": last_season,
+            "total_seasons": total_seasons,
+            "career_bests": career_bests,
+            "win_contribution": win_contribution,
+            "head_to_head": head_to_head[:10],  # Top 10 opponents
             "batting_summary": bat_summary,
             "bowling_summary": bowl_summary,
             "pom_summary": pom_summary,

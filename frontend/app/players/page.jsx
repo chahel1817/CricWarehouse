@@ -19,7 +19,12 @@ import {
   TrendingUp,
   TrendingDown,
   Target,
-  Award
+  Award,
+  CalendarDays,
+  Medal,
+  Swords,
+  ChevronRight,
+  ChevronLeft
 } from "lucide-react";
 
 const BATTING_SORT_OPTIONS = [
@@ -46,6 +51,24 @@ const BOWLING_SORT_OPTIONS = [
   { value: "dot_ball_pct_desc", label: "Dot Ball %: Most first" },
 ];
 
+const TEAM_COLORS = {
+  "CSK": "bg-yellow-400 text-black",
+  "MI": "bg-blue-600 text-white",
+  "RCB": "bg-red-600 text-white",
+  "KKR": "bg-purple-800 text-white",
+  "DC": "bg-blue-500 text-white",
+  "RR": "bg-pink-500 text-white",
+  "PBKS": "bg-red-500 text-white",
+  "SRH": "bg-orange-500 text-white",
+  "GT": "bg-teal-700 text-white",
+  "LSG": "bg-cyan-800 text-white",
+  "RPS": "bg-purple-500 text-white",
+  "GL": "bg-orange-400 text-white",
+  "PWI": "bg-blue-400 text-white",
+  "KTK": "bg-orange-600 text-white",
+  "DC*": "bg-gray-400 text-white",
+};
+
 export default function PlayersPage() {
   const [season, setSeason] = useState("All Seasons");
   const [activeTab, setActiveTab] = useState("batting"); // "batting" or "bowling"
@@ -65,6 +88,7 @@ export default function PlayersPage() {
   const sortOptions = activeTab === "batting" ? BATTING_SORT_OPTIONS : BOWLING_SORT_OPTIONS;
   const [playerProfile, setPlayerProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [viewMode, setViewMode] = useState("career"); // "career" or "season"
 
   useEffect(() => {
     async function loadMetadata() {
@@ -182,6 +206,7 @@ export default function PlayersPage() {
       try {
         const profile = await api.getPlayerProfile(selectedPlayer);
         setPlayerProfile(profile);
+        setViewMode("career"); // Reset to career view on new player
       } catch (err) {
         console.error("Error loading player profile:", err);
       } finally {
@@ -197,6 +222,106 @@ export default function PlayersPage() {
     const name = activeTab === "batting" ? p.batter : p.bowler;
     return name?.toLowerCase().includes(search.toLowerCase());
   });
+
+  const renderBattingSection = (summary, isSecondary = false) => {
+    if (!summary || !summary.matches) return null;
+    return (
+      <div className={`mb-6 bg-white/50 backdrop-blur-sm border border-ink/10 rounded-xl p-4 shadow-sm hover:shadow transition duration-200 ${isSecondary ? 'opacity-80' : ''}`}>
+        <div className="text-[10px] font-black text-wicket uppercase tracking-widest mb-3 flex items-center justify-between border-b border-ink/5 pb-2">
+          <div className="flex items-center gap-1.5"><Trophy className="w-4 h-4 text-wicket" /> Batting Stats</div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-ink/5 p-3 rounded-lg border border-ink/5 flex items-center gap-3">
+            <Flame className="w-5 h-5 text-wicket shrink-0" />
+            <div>
+              <div className="text-[8px] font-black text-ink/40 uppercase">Total Runs</div>
+              <div className="text-sm font-black text-boundary">{summary.total_runs}</div>
+            </div>
+          </div>
+          
+          <div className="bg-ink/5 p-3 rounded-lg border border-ink/5 flex items-center gap-3">
+            <Activity className="w-5 h-5 text-wicket shrink-0" />
+            <div>
+              <div className="text-[8px] font-black text-ink/40 uppercase">Average</div>
+              <div className="text-sm font-black text-ink">{summary.batting_avg || "0.0"}</div>
+            </div>
+          </div>
+
+          <div className="bg-ink/5 p-3 rounded-lg border border-ink/5 flex items-center gap-3">
+            <Zap className="w-5 h-5 text-wicket shrink-0" />
+            <div>
+              <div className="text-[8px] font-black text-ink/40 uppercase">Strike Rate</div>
+              <div className="text-sm font-black text-ink">{summary.strike_rate}</div>
+            </div>
+          </div>
+
+          <div className="bg-ink/5 p-3 rounded-lg border border-ink/5 flex items-center gap-3">
+            <TrendingUp className="w-5 h-5 text-wicket shrink-0" />
+            <div>
+              <div className="text-[8px] font-black text-ink/40 uppercase">Highest Score</div>
+              <div className="text-sm font-black text-ink">{summary.highest_score}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-3 flex items-center justify-between bg-ink/5 px-3 py-2 rounded-lg border border-ink/5 text-[9px] font-bold text-ink/65">
+          <span>Matches: <strong className="text-ink font-black">{summary.matches}</strong></span>
+          {!isSecondary && <span>Innings: <strong className="text-ink font-black">{summary.innings}</strong></span>}
+          <span>100s/50s: <strong className="text-wicket font-black">{summary.hundreds}/{summary.fifties}</strong></span>
+        </div>
+      </div>
+    );
+  };
+
+  const renderBowlingSection = (summary, isSecondary = false) => {
+    if (!summary || !summary.matches) return null;
+    return (
+      <div className={`mb-6 bg-white/50 backdrop-blur-sm border border-ink/10 rounded-xl p-4 shadow-sm hover:shadow transition duration-200 ${isSecondary ? 'opacity-80' : ''}`}>
+        <div className="text-[10px] font-black text-royal uppercase tracking-widest mb-3 flex items-center justify-between border-b border-ink/5 pb-2">
+          <div className="flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-royal" /> Bowling Stats</div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-ink/5 p-3 rounded-lg border border-ink/5 flex items-center gap-3">
+            <Target className="w-5 h-5 text-royal shrink-0" />
+            <div>
+              <div className="text-[8px] font-black text-ink/40 uppercase">Wickets</div>
+              <div className="text-sm font-black text-boundary">{summary.total_wickets}</div>
+            </div>
+          </div>
+          
+          <div className="bg-ink/5 p-3 rounded-lg border border-ink/5 flex items-center gap-3">
+            <TrendingDown className="w-5 h-5 text-royal shrink-0" />
+            <div>
+              <div className="text-[8px] font-black text-ink/40 uppercase">Economy</div>
+              <div className="text-sm font-black text-ink">{summary.economy}</div>
+            </div>
+          </div>
+
+          <div className="bg-ink/5 p-3 rounded-lg border border-ink/5 flex items-center gap-3">
+            <Activity className="w-5 h-5 text-royal shrink-0" />
+            <div>
+              <div className="text-[8px] font-black text-ink/40 uppercase">Average</div>
+              <div className="text-sm font-black text-ink">{summary.bowling_avg || "0.0"}</div>
+            </div>
+          </div>
+
+          <div className="bg-ink/5 p-3 rounded-lg border border-ink/5 flex items-center gap-3">
+            <Sparkles className="w-5 h-5 text-royal shrink-0" />
+            <div>
+              <div className="text-[8px] font-black text-ink/40 uppercase">Dot Ball %</div>
+              <div className="text-sm font-black text-ink">{summary.dot_ball_pct}%</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between bg-ink/5 px-3 py-2 rounded-lg border border-ink/5 text-[9px] font-bold text-ink/65">
+          <span>Matches: <strong className="text-ink font-black">{summary.matches}</strong></span>
+          <span>Overs: <strong className="text-ink font-black">{Math.round(summary.total_balls / 6)}</strong></span>
+          <span>5w/4w: <strong className="text-royal font-black">{summary.five_wkt_hauls}/{summary.four_wkt_hauls}</strong></span>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <main className="min-h-screen text-ink bg-paper grain w-full overflow-hidden py-6" role="main">
@@ -328,14 +453,14 @@ export default function PlayersPage() {
                         <td className="p-3.5 font-bold text-ink">{player.batter}</td>
                         <td className="p-3.5 text-ink/70">{player.matches}</td>
                         <td className="p-3.5 text-ink/70">{player.innings}</td>
-                        <td className="p-3.5 text-ink font-black">{player.total_runs}</td>
-                        <td className="p-3.5 text-boundary font-black">{player.total_boundaries ?? (player.total_fours + player.total_sixes)}</td>
+                        <td className="p-3.5 text-boundary font-black">{player.total_runs}</td>
+                        <td className="p-3.5 text-ink font-black">{player.total_boundaries ?? (player.total_fours + player.total_sixes)}</td>
                         <td className="p-3.5 text-ink/70 font-bold">{player.total_fours}</td>
                         <td className="p-3.5 text-ink/70 font-bold">{player.total_sixes}</td>
-                        <td className="p-3.5 text-royal font-bold">{player.strike_rate}</td>
+                        <td className="p-3.5 text-ink font-bold">{player.strike_rate}</td>
                         <td className="p-3.5 text-ink/80 font-medium">{player.batting_avg || "0.0"}</td>
                         <td className="p-3.5 text-ink/70">{player.highest_score}</td>
-                        <td className="p-3.5 text-right font-semibold text-boundary">
+                        <td className="p-3.5 text-right font-semibold text-wicket">
                           {player.hundreds}/{player.fifties}
                         </td>
                       </tr>
@@ -387,12 +512,12 @@ export default function PlayersPage() {
                         <td className="p-3.5 text-ink/70">{player.matches}</td>
                         <td className="p-3.5 text-ink/70">{player.overs}</td>
                         <td className="p-3.5 text-ink/55 font-bold">{player.bowling_type || "Unknown"}</td>
-                        <td className="p-3.5 text-ink font-black">{player.total_wickets}</td>
-                        <td className="p-3.5 text-royal font-bold">{player.economy}</td>
+                        <td className="p-3.5 text-boundary font-black">{player.total_wickets}</td>
+                        <td className="p-3.5 text-ink font-bold">{player.economy}</td>
                         <td className="p-3.5 text-ink/80 font-medium">{player.bowling_avg || "0.0"}</td>
-                        <td className="p-3.5 text-boundary font-black">{player.maiden_overs || 0}</td>
+                        <td className="p-3.5 text-ink font-black">{player.maiden_overs || 0}</td>
                         <td className="p-3.5 text-ink/70">{player.dot_ball_pct}%</td>
-                        <td className="p-3.5 text-right font-semibold text-boundary">
+                        <td className="p-3.5 text-right font-semibold text-royal">
                           {player.five_wkt_hauls}/{player.four_wkt_hauls}
                         </td>
                       </tr>
@@ -416,135 +541,202 @@ export default function PlayersPage() {
                 <User className="w-5 h-5 text-wicket" />
                 Player Profile
               </h2>
-              <span className="text-[10px] font-bold text-ink/40 tracking-wider">Historical Career Summary</span>
+              {playerProfile && (
+                <div className="flex bg-ink/5 rounded-lg p-1">
+                  <button 
+                    onClick={() => setViewMode("career")}
+                    className={`text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-md transition ${viewMode === "career" ? "bg-white shadow-sm text-ink" : "text-ink/40 hover:text-ink/70"}`}
+                  >
+                    Career
+                  </button>
+                  <button 
+                    onClick={() => setViewMode("season")}
+                    className={`text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-md transition ${viewMode === "season" ? "bg-white shadow-sm text-ink" : "text-ink/40 hover:text-ink/70"}`}
+                  >
+                    By Season
+                  </button>
+                </div>
+              )}
             </div>
 
             {selectedPlayer ? (
-              <div className="mt-6 p-6 rounded-xl border border-ink/10 bg-white/40 shadow-sm min-h-[400px] flex flex-col justify-between">
+              <div className="mt-6 p-6 rounded-xl border border-ink/10 bg-white/40 shadow-sm min-h-[400px] flex flex-col">
                 {profileLoading ? (
                   <div className="h-64 flex items-center justify-center animate-pulse bg-ink/5 rounded-xl w-full" />
                 ) : playerProfile ? (
-                  <div>
+                  <div className="flex-1">
                     <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-ink text-white font-display text-base font-black uppercase tracking-tight">
-                        {playerProfile.player?.split(" ").map(n => n[0]).join("")}
+                      <div className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full overflow-hidden font-display text-base font-black tracking-tight shadow-sm ${playerProfile.current_team_abbr ? TEAM_COLORS[playerProfile.current_team_abbr] || 'bg-ink text-white' : 'bg-ink text-white'}`}>
+                        {playerProfile.current_team_abbr && ['CSK','DC','GT','KKR','LSG','MI','PBKS','RCB','RR','SRH'].includes(playerProfile.current_team_abbr.replace('*', '')) ? (
+                          <img 
+                            src={`/teams/${playerProfile.current_team_abbr.replace('*', '').toLowerCase()}.jpg`} 
+                            alt={playerProfile.current_team_abbr}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span>{playerProfile.current_team_abbr || playerProfile.player?.split(" ").map(n => n[0]).join("")}</span>
+                        )}
                       </div>
                       <div>
                         <h3 className="font-display text-base font-black text-ink uppercase tracking-tight leading-tight">
                           {playerProfile.player}
                         </h3>
-                        <span className="text-[9px] font-black uppercase tracking-wider text-ink/35">IPL Career Profile</span>
+                        <div className="flex items-center gap-2 mt-0.5 text-[10px] font-black uppercase tracking-wider text-ink/50">
+                          <span className="text-boundary">{playerProfile.role}</span>
+                          {playerProfile.current_team_abbr && (
+                            <>
+                              <span>•</span>
+                              <span>{playerProfile.current_team_abbr}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
                     <div className="h-px bg-ink/10 w-full my-5" />
 
-                    {/* Batting Career Summary */}
-                    {playerProfile.batting_summary && playerProfile.batting_summary.matches ? (
-                      <div className="mb-6 bg-white/50 backdrop-blur-sm border border-ink/10 rounded-xl p-4 shadow-sm hover:shadow transition duration-200">
-                        <div className="text-[10px] font-black text-wicket uppercase tracking-widest mb-3 flex items-center gap-1.5 border-b border-ink/5 pb-2">
-                          <Trophy className="w-4 h-4 text-wicket" /> Batting Career Stats
+                    {viewMode === "career" ? (
+                      <>
+                        {/* Longevity & Quick Bests */}
+                        <div className="mb-5 flex flex-wrap gap-2 text-[9px] uppercase tracking-widest font-bold">
+                          {playerProfile.total_seasons > 0 && (
+                            <span className="bg-ink/5 text-ink/70 px-2 py-1 rounded flex items-center gap-1.5">
+                              <CalendarDays className="w-3 h-3" /> Active: {playerProfile.first_season} - {playerProfile.last_season} ({playerProfile.total_seasons} yrs)
+                            </span>
+                          )}
+                          {playerProfile.career_bests?.best_batting && (
+                            <span className="bg-wicket/10 text-wicket px-2 py-1 rounded flex items-center gap-1.5">
+                              <Medal className="w-3 h-3" /> Best Bat: {playerProfile.career_bests.best_batting.runs} vs {playerProfile.career_bests.best_batting.vs}
+                            </span>
+                          )}
+                          {playerProfile.career_bests?.best_bowling && (
+                            <span className="bg-royal/10 text-royal px-2 py-1 rounded flex items-center gap-1.5">
+                              <Medal className="w-3 h-3" /> Best Bowl: {playerProfile.career_bests.best_bowling.wickets}/{playerProfile.career_bests.best_bowling.runs} vs {playerProfile.career_bests.best_bowling.vs}
+                            </span>
+                          )}
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-ink/5 p-3 rounded-lg border border-ink/5 flex items-center gap-3">
-                            <Flame className="w-5 h-5 text-boundary shrink-0" />
-                            <div>
-                              <div className="text-[8px] font-black text-ink/40 uppercase">Total Runs</div>
-                              <div className="text-sm font-black text-ink">{playerProfile.batting_summary.total_runs}</div>
-                            </div>
-                          </div>
-                          
-                          <div className="bg-ink/5 p-3 rounded-lg border border-ink/5 flex items-center gap-3">
-                            <Activity className="w-5 h-5 text-wicket shrink-0" />
-                            <div>
-                              <div className="text-[8px] font-black text-ink/40 uppercase">Average</div>
-                              <div className="text-sm font-black text-ink">{playerProfile.batting_summary.batting_avg || "0.0"}</div>
-                            </div>
-                          </div>
 
-                          <div className="bg-ink/5 p-3 rounded-lg border border-ink/5 flex items-center gap-3">
-                            <Zap className="w-5 h-5 text-royal shrink-0" />
+                        {/* Win Contribution */}
+                        {playerProfile.win_contribution && (
+                          <div className="mb-5 p-3 bg-boundary/5 border border-boundary/10 rounded-lg flex items-start gap-3">
+                            <Trophy className="w-5 h-5 text-boundary shrink-0 mt-0.5" />
                             <div>
-                              <div className="text-[8px] font-black text-ink/40 uppercase">Strike Rate</div>
-                              <div className="text-sm font-black text-royal">{playerProfile.batting_summary.strike_rate}</div>
+                              <div className="text-[10px] font-black uppercase text-boundary/70 tracking-wider">Match Winner</div>
+                              <div className="text-xs font-bold text-ink mt-0.5 leading-snug">{playerProfile.win_contribution.stat}</div>
                             </div>
                           </div>
+                        )}
 
-                          <div className="bg-ink/5 p-3 rounded-lg border border-ink/5 flex items-center gap-3">
-                            <TrendingUp className="w-5 h-5 text-boundary shrink-0" />
-                            <div>
-                              <div className="text-[8px] font-black text-ink/40 uppercase">Highest Score</div>
-                              <div className="text-sm font-black text-ink">{playerProfile.batting_summary.highest_score}</div>
+                        {/* Render Bowling/Batting based on role */}
+                        {playerProfile.role === "BOWLER" || playerProfile.role === "ALL-ROUNDER" ? (
+                          <>
+                            {renderBowlingSection(playerProfile.bowling_summary, false)}
+                            {renderBattingSection(playerProfile.batting_summary, true)}
+                          </>
+                        ) : (
+                          <>
+                            {renderBattingSection(playerProfile.batting_summary, false)}
+                            {renderBowlingSection(playerProfile.bowling_summary, true)}
+                          </>
+                        )}
+
+                        {/* Head to Head */}
+                        {playerProfile.head_to_head && playerProfile.head_to_head.length > 0 && (
+                          <div className="mt-5 border-t border-ink/5 pt-4">
+                            <h4 className="text-[10px] font-black uppercase text-ink/50 tracking-wider flex items-center gap-1.5 mb-3">
+                              <Swords className="w-4 h-4" /> Top Targets ({playerProfile.head_to_head[0].label})
+                            </h4>
+                            <div className="grid grid-cols-1 gap-1.5">
+                              {playerProfile.head_to_head.slice(0, 3).map(h2h => (
+                                <div key={h2h.team} className="flex justify-between items-center text-xs bg-ink/5 px-3 py-1.5 rounded text-ink/75">
+                                  <span className="font-bold flex items-center gap-2">
+                                    {['CSK','DC','GT','KKR','LSG','MI','PBKS','RCB','RR','SRH'].includes(h2h.team.replace('*', '')) ? (
+                                      <img src={`/teams/${h2h.team.replace('*', '').toLowerCase()}.jpg`} alt={h2h.team} className="w-5 h-5 rounded-full object-cover shadow-[0_0_0_1px_rgba(0,0,0,0.05)]" />
+                                    ) : (
+                                      <span className={`w-2 h-2 rounded-full ${TEAM_COLORS[h2h.team] || 'bg-ink'}`}></span>
+                                    )}
+                                    vs {h2h.team}
+                                  </span>
+                                  <span className="font-black text-ink">{h2h.value} <span className="text-[9px] text-ink/40 font-bold ml-1">in {h2h.matches}M</span></span>
+                                </div>
+                              ))}
                             </div>
                           </div>
-                        </div>
+                        )}
                         
-                        <div className="mt-3 flex items-center justify-between bg-ink/5 px-3 py-2 rounded-lg border border-ink/5 text-[9px] font-bold text-ink/65">
-                          <span>Matches: <strong className="text-ink font-black">{playerProfile.batting_summary.matches}</strong></span>
-                          <span>Innings: <strong className="text-ink font-black">{playerProfile.batting_summary.innings}</strong></span>
-                          <span>100s / 50s: <strong className="text-boundary font-black">{playerProfile.batting_summary.hundreds} / {playerProfile.batting_summary.fifties}</strong></span>
+                        {/* Impact Award Summaries */}
+                        {playerProfile.pom_summary?.total_pom_awards > 0 && (
+                          <div className="mt-5 bg-wicket/5 border border-wicket/10 p-3 rounded-lg flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <Award className="w-4 h-4 text-wicket shrink-0" />
+                              <span className="font-bold text-ink/75">Player of Match Awards</span>
+                            </div>
+                            <span className="font-black text-boundary text-sm">{playerProfile.pom_summary.total_pom_awards}</span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex-1 overflow-auto max-h-[500px] pr-2">
+                        {/* By Season View */}
+                        <div className="space-y-6">
+                          {(playerProfile.role === "BOWLER" || playerProfile.role === "ALL-ROUNDER") && playerProfile.bowling_history?.length > 0 && (
+                            <div>
+                              <h4 className="text-[10px] font-black uppercase text-royal tracking-widest mb-3 flex items-center gap-2">
+                                <Sparkles className="w-4 h-4" /> Bowling Progression
+                              </h4>
+                              <table className="w-full text-left text-[11px] border-collapse">
+                                <thead>
+                                  <tr className="border-b border-ink/10 bg-ink/5 font-black uppercase text-ink/50">
+                                    <th className="py-2 px-3">Season</th>
+                                    <th className="py-2 px-3">Wickets</th>
+                                    <th className="py-2 px-3">Econ</th>
+                                    <th className="py-2 px-3">Avg</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {playerProfile.bowling_history.filter(h => h.season !== "All-Time").reverse().map(h => (
+                                    <tr key={`bowl-${h.season}`} className="border-b border-ink/5 hover:bg-ink/5 transition">
+                                      <td className="py-2 px-3 font-bold">{h.season}</td>
+                                      <td className="py-2 px-3 font-black text-boundary">{h.total_wickets}</td>
+                                      <td className="py-2 px-3 font-semibold">{h.economy}</td>
+                                      <td className="py-2 px-3 text-ink/60">{h.bowling_avg}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+
+                          {(playerProfile.role === "BATSMAN" || playerProfile.role === "ALL-ROUNDER" || playerProfile.role === "WK-BATSMAN") && playerProfile.batting_history?.length > 0 && (
+                            <div>
+                              <h4 className="text-[10px] font-black uppercase text-wicket tracking-widest mb-3 flex items-center gap-2">
+                                <Trophy className="w-4 h-4" /> Batting Progression
+                              </h4>
+                              <table className="w-full text-left text-[11px] border-collapse">
+                                <thead>
+                                  <tr className="border-b border-ink/10 bg-ink/5 font-black uppercase text-ink/50">
+                                    <th className="py-2 px-3">Season</th>
+                                    <th className="py-2 px-3">Runs</th>
+                                    <th className="py-2 px-3">SR</th>
+                                    <th className="py-2 px-3">Avg</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {playerProfile.batting_history.filter(h => h.season !== "All-Time").reverse().map(h => (
+                                    <tr key={`bat-${h.season}`} className="border-b border-ink/5 hover:bg-ink/5 transition">
+                                      <td className="py-2 px-3 font-bold">{h.season}</td>
+                                      <td className="py-2 px-3 font-black text-boundary">{h.total_runs}</td>
+                                      <td className="py-2 px-3 font-semibold">{h.strike_rate}</td>
+                                      <td className="py-2 px-3 text-ink/60">{h.batting_avg}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    ) : null}
-
-                    {/* Bowling Career Summary */}
-                    {playerProfile.bowling_summary && playerProfile.bowling_summary.matches ? (
-                      <div className="mb-6 bg-white/50 backdrop-blur-sm border border-ink/10 rounded-xl p-4 shadow-sm hover:shadow transition duration-200">
-                        <div className="text-[10px] font-black text-royal uppercase tracking-widest mb-3 flex items-center gap-1.5 border-b border-ink/5 pb-2">
-                          <Sparkles className="w-4 h-4 text-royal" /> Bowling Career Stats
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-ink/5 p-3 rounded-lg border border-ink/5 flex items-center gap-3">
-                            <Target className="w-5 h-5 text-boundary shrink-0" />
-                            <div>
-                              <div className="text-[8px] font-black text-ink/40 uppercase">Wickets</div>
-                              <div className="text-sm font-black text-ink">{playerProfile.bowling_summary.total_wickets}</div>
-                            </div>
-                          </div>
-                          
-                          <div className="bg-ink/5 p-3 rounded-lg border border-ink/5 flex items-center gap-3">
-                            <TrendingDown className="w-5 h-5 text-royal shrink-0" />
-                            <div>
-                              <div className="text-[8px] font-black text-ink/40 uppercase">Economy</div>
-                              <div className="text-sm font-black text-ink">{playerProfile.bowling_summary.economy}</div>
-                            </div>
-                          </div>
-
-                          <div className="bg-ink/5 p-3 rounded-lg border border-ink/5 flex items-center gap-3">
-                            <Activity className="w-5 h-5 text-wicket shrink-0" />
-                            <div>
-                              <div className="text-[8px] font-black text-wicket uppercase">Average</div>
-                              <div className="text-sm font-black text-ink">{playerProfile.bowling_summary.bowling_avg || "0.0"}</div>
-                            </div>
-                          </div>
-
-                          <div className="bg-ink/5 p-3 rounded-lg border border-ink/5 flex items-center gap-3">
-                            <Sparkles className="w-5 h-5 text-boundary shrink-0" />
-                            <div>
-                              <div className="text-[8px] font-black text-ink/40 uppercase">Dot Ball %</div>
-                              <div className="text-sm font-black text-ink">{playerProfile.bowling_summary.dot_ball_pct}%</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-3 flex items-center justify-between bg-ink/5 px-3 py-2 rounded-lg border border-ink/5 text-[9px] font-bold text-ink/65">
-                          <span>Matches: <strong className="text-ink font-black">{playerProfile.bowling_summary.matches}</strong></span>
-                          <span>Overs: <strong className="text-ink font-black">{Math.round(playerProfile.bowling_summary.total_balls / 6)}</strong></span>
-                          <span>5w / 4w: <strong className="text-boundary font-black">{playerProfile.bowling_summary.five_wkt_hauls} / {playerProfile.bowling_summary.four_wkt_hauls}</strong></span>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {/* Impact Award Summaries */}
-                    {playerProfile.pom_summary ? (
-                      <div className="bg-wicket/5 border border-wicket/10 p-4 rounded-xl flex items-center justify-between text-xs hover:bg-wicket/10 transition duration-150">
-                        <div className="flex items-center gap-2">
-                          <Award className="w-5 h-5 text-wicket shrink-0" />
-                          <span className="font-bold text-ink/75">POM Awards (Player of Match):</span>
-                        </div>
-                        <span className="font-black text-boundary text-sm">{playerProfile.pom_summary.total_pom_awards}</span>
-                      </div>
-                    ) : null}
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center justify-center h-full text-center text-ink/40 font-bold">
