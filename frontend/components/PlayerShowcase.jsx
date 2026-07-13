@@ -61,7 +61,7 @@ const LEGENDS = [
     subStat: "257 MATCHES · STRIKE RATE: 131.3 · AVG: 29.5",
     label: "JERSEY #45 · ACTIVE SINCE 2008",
     pipelineSource: "Data computed from 1,243 JSON files via PySpark silver layer",
-    src: "/players/rohitt.avif",
+    src: "/players/rohitsharma.avif",
     imgW: 460,
     imgH: 700,
     shapeBg: "rgba(61,99,255,0.10)",
