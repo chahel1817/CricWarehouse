@@ -1,7 +1,7 @@
 // API Client for CricWarehouse Frontend
 // Connects to FastAPI backend at http://localhost:8000
 
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // Fallback mock data if the API is offline
 const MOCK_DATA = {
