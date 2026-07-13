@@ -198,19 +198,17 @@ export default function HeroSection() {
 
   return (
     <section
-      className="relative overflow-visible border-b border-ink/5"
+      className="relative overflow-visible border-b border-ink/5 flex flex-col justify-center min-h-[85vh] py-12 lg:py-0 lg:h-[calc(100vh-5rem)] max-h-[900px]"
       aria-label="CricWarehouse hero section"
-      style={{ minHeight: "88vh", display: "flex", flexDirection: "column", justifyContent: "center" }}
     >
       {/* ════════════════════════════════════════
           DESKTOP (lg+) — Two-Column Composition
           ════════════════════════════════════════ */}
-      <div className="hidden lg:flex lg:items-center lg:gap-8" style={{ minHeight: "82vh" }}>
+      <div className="hidden lg:flex lg:items-center lg:gap-8 w-full max-w-7xl mx-auto px-6 h-full">
 
         {/* ── LEFT COLUMN: Headline & Compositional Flow ── */}
         <div
-          className="relative flex flex-col justify-center"
-          style={{ width: "46%", paddingTop: "3rem", paddingBottom: "3rem" }}
+          className="relative flex flex-col justify-center flex-1 py-8"
         >
           {/* Visual line connector from top margin */}
           <div className="absolute top-0 left-0 w-px h-16 bg-ink/10" aria-hidden="true" />
@@ -223,40 +221,40 @@ export default function HeroSection() {
 
           {/* ── MAIN HEADLINE (Two Lines Max) ── */}
           <h1
-            className="reveal reveal-d1 mt-6 font-display font-black tracking-[-0.045em] leading-[0.9]"
-            style={{ fontSize: "clamp(3.8rem, 7.2vw, 6.8rem)" }}
+            className="reveal reveal-d1 mt-5 font-display font-black tracking-[-0.045em] leading-[0.9]"
+            style={{ fontSize: "clamp(2.8rem, 5.5vw, 6rem)" }}
           >
             <span className="flex flex-wrap items-center gap-x-4">
               <span>TURNING IPL DATA</span>
               <span
                 aria-hidden="true"
                 className="shape-grain inline-block shrink-0 rounded-full bg-boundary"
-                style={{ width: "clamp(1.8rem,3vw,2.8rem)", height: "clamp(1.8rem,3vw,2.8rem)" }}
+                style={{ width: "clamp(1.5rem,2.5vw,2.5rem)", height: "clamp(1.5rem,2.5vw,2.5rem)" }}
               />
             </span>
-            <span className="flex flex-wrap items-center gap-x-4 mt-1">
+            <span className="flex flex-wrap items-center gap-x-4 mt-2">
               <span>INTO INSIGHTS.</span>
               <span
                 aria-hidden="true"
                 className="shape-grain inline-block shrink-0 rotate-45 bg-trophy"
-                style={{ width: "clamp(1.6rem,2.8vw,2.6rem)", height: "clamp(1.6rem,2.8vw,2.6rem)" }}
+                style={{ width: "clamp(1.4rem,2.2vw,2.2rem)", height: "clamp(1.4rem,2.2vw,2.2rem)" }}
               />
             </span>
           </h1>
 
           {/* EYE PATH CONNECTOR: Grey/black line next to description */}
-          <div className="relative mt-6 pl-4">
+          <div className="relative mt-5 pl-4">
             {/* Visual connector lines (Grey instead of orange) */}
             <div className="absolute left-0 top-0 bottom-0 w-1 bg-ink/20" aria-hidden="true" />
             
             {/* Project description */}
-            <p className="reveal reveal-d2 pl-3 text-[1.05rem] lg:text-[1.12rem] font-semibold leading-[1.75] text-ink/75 max-w-[45ch]">
+            <p className="reveal reveal-d2 pl-3 text-[1rem] lg:text-[1.05rem] font-medium leading-[1.65] text-ink/75 max-w-[48ch]">
               An end-to-end IPL data engineering pipeline — raw ball-by-ball JSON
               transformed through Bronze, Silver, and Gold layers into analytics-ready insights.
             </p>
 
             {/* Tech Tags - Moved directly below description */}
-            <div className="reveal reveal-d3 mt-6 pl-3 flex items-center gap-3 flex-wrap">
+            <div className="reveal reveal-d3 mt-5 pl-3 flex items-center gap-3 flex-wrap">
               <span className="text-[9px] font-black uppercase tracking-wider text-ink/35">Built with:</span>
               <div className="flex flex-wrap gap-1.5">
                 {TECH.map((t) => (
@@ -271,7 +269,7 @@ export default function HeroSection() {
             </div>
 
             {/* CTA Buttons */}
-            <div className="reveal reveal-d4 mt-6 pl-3 flex flex-wrap items-center gap-4">
+            <div className="reveal reveal-d4 mt-5 pl-3 flex flex-wrap items-center gap-4">
               <a
                 href="#architecture"
                 className="cta-btn group inline-flex items-center gap-3 bg-ink px-6 py-3.5 text-xs font-black uppercase tracking-[0.14em] text-white transition-all duration-300 hover:bg-boundary"
@@ -292,8 +290,7 @@ export default function HeroSection() {
         {/* ── RIGHT COLUMN: Redesigned Medallion Pipeline Graphic ── */}
         <div
           ref={stageRef}
-          className="relative flex-1 flex items-center justify-center overflow-visible"
-          style={{ minHeight: "82vh" }}
+          className="relative flex-1 flex items-center justify-center overflow-visible h-full w-full max-w-[55%]"
           aria-label="IPL data pipeline visualization"
         >
           {/* Labeled geometric backgrounds (color-matched to Bronze/Silver/Gold layers) */}
@@ -425,7 +422,7 @@ export default function HeroSection() {
 
       {/* Scroll Down Indicator */}
       <div 
-        className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 animate-bounce z-10 cursor-pointer hidden lg:flex" 
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 animate-bounce z-10 cursor-pointer hidden lg:flex" 
         onClick={() => document.getElementById("architecture")?.scrollIntoView({ behavior: "smooth" })}
       >
         <span className="text-[9px] font-black tracking-[0.25em] text-ink/30 uppercase">Scroll Down</span>
